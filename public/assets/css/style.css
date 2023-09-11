@@ -137,7 +137,14 @@
   box-sizing: border-box;
 }
 
-a { text-decoration: none; }
+a { 
+  color: lightblue;
+  text-decoration: none;
+}
+
+a:visited {
+  color: lightblue;
+}
 
 li { list-style: none; }
 

@@ -550,14 +550,14 @@ main {
   z-index: 1;
 }
 
-.service-item::before {
+/* .service-item::before {
   content: "";
   position: absolute;
   inset: 1px;
   background: var(--bg-gradient-jet);
   border-radius: inherit;
   z-index: -1;
-}
+} */
 
 .service-icon-box { margin-bottom: 10px; }
 
@@ -566,6 +566,7 @@ main {
 .service-ion-icon {
   color: var(--light-blue);
   font-size: 50px;
+  margin: auto;
 }
 
 .service-content-box { text-align: center; }

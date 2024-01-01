@@ -15,5 +15,15 @@ const firebaseConfig = {
   measurementId: "G-16Z1BNN8ND"
 };
 
+// setup a recursive function to get the data
+function getFirebaseData(ref, callback) {
+  ref.once("value", function(snapshot) {
+    callback(snapshot.val());
+    snapshot.forEach(function(childSnapshot) {
+      getFirebaseData(childSnapshot.ref, callback);
+    });
+  });
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

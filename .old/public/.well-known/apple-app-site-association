@@ -1,0 +1,17 @@
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "MU64J9Q3TA.com.tylerkeller.data-driven-diabetes"
+            }
+        ],
+        "components": [
+            {
+                "/": "/oauth-callback",
+                "comment": "Any oauth-callback path will be handled by Universal Links and send users to the app"
+            }
+        ]
+        
+    }
+}

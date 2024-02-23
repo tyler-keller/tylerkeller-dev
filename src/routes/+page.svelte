@@ -5,8 +5,6 @@
         // Add more sections as needed
     ];
 
-    import 'tailwindcss/tailwind.css';
-
     let darkMode = false;
 
     const toggleDarkMode = () => {

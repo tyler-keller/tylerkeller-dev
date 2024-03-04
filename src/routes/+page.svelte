@@ -1,29 +1,44 @@
 <script>
-    let sections = [
-        { title: 'Background', content: 'I\'m a Computer Science major at Colorado School of Mines.' },
-        { title: 'What Drives Me', content: 'I love using software to fix everyday problems.' },
-        // Add more sections as needed
-    ];
+    import { onMount } from 'svelte';
 
     let darkMode = false;
 
-    const toggleDarkMode = () => {
+    // Check for system preference on mount
+    onMount(() => {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        darkMode = prefersDark;
+    });
+
+    // Function to toggle dark mode
+    function toggleDarkMode() {
         darkMode = !darkMode;
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            darkMode = true;
-        }
-        document.body.classList.toggle('dark', darkMode);
-    };
+    }
 </script>
+
+<style>
+:global(body.dark) {
+    background-color: #333;
+    color: white;
+}
+:global(body) {
+    transition: background-color 0.3s, color 0.3s;
+}
+</style>
+
+<button on:click={toggleDarkMode}>Toggle Dark Mode</button>
+
+<svelte:body class:dark={darkMode} />
+  
 <div class="mb-4 text-center">
     <img src="https://avatars.githubusercontent.com/u/96822088?s=400&u=df589e2e9891eaeebd69aaf79eb28f50f181ca0b&v=4" alt="Tyler Keller" class="rounded-full h-32 w-32 mx-auto" />
 </div>
-<div class="mb-4 text-center">
-    <h1 class="text-4xl font-bold">Tyler Keller</h1>
-    <h3 class="text-2xl font-semibold">Software Engineer</h3>
+
+<div class="mb-4 text-center" class:dark={darkMode}>
+    <h1 class="text-4xl font-bold dark:text-white" class:dark={darkMode}>Tyler Keller</h1>
+    <h3 class="text-2xl font-semibold dark:text-white" class:dark={darkMode}>Software Engineer</h3>
 </div>
 
-<div class="mb-4 space-y-2 text-center">
+<div class="mb-4 space-y-2 text-center" class:dark={darkMode}>
     <h1 class="text-xl font-bold">Contact Information</h1>
 
     <ul class="space-y-2">
@@ -51,11 +66,31 @@
         </li>
     </ul>
 </div>
-<h1 class="text-center">About Me</h1>
 
-<section class="about text-center" class:dark={darkMode}>
-{#each sections as section}
-    <h5 class="text-green">{section.title}</h5>
-    <p>{section.content}</p>
-{/each}
-</section>
+<div class="mb-4 space-y-2 text-center" class:dark={darkMode}>
+
+    <h5 class="font-semibold text-center text-xl" class:dark={darkMode}>What Drives Me</h5>
+    <p class="text-center" class:dark={darkMode}>
+    I love using software to fix everyday problems.
+    </p>
+
+    <h5 class="text-center text-xl font-semibold" class:dark={darkMode}>The Journey So Far</h5>
+    <p class="text-center" class:dark={darkMode}>
+    TX -> CO -> HI -> CA -> NJ -> VA -> DEU -> VA -> CO
+    </p>
+
+    <h5 class="text-center text-xl font-semibold" class:dark={darkMode}>Hobbies</h5>
+    <p class="text-center" class:dark={darkMode}>
+    My speedcubing PB is <strong>12.54 seconds</strong>. Still working on getting that sub-10 time.
+    </p>
+    <p class="text-center" class:dark={darkMode}>
+    I love music. Currently, learning piano.
+    </p>
+
+    <h5 class="text-center text-xl font-semibold" class:dark={darkMode}>Reading</h5>
+    <p class="text-center" class:dark={darkMode}>
+    I love reading. A new favorite is <strong><a href="https://en.wikipedia.org/wiki/Permutation_City"
+        target="_blank">"Permutation City" by Dan Egan</a></strong>.
+    </p>
+
+</div>

@@ -20,6 +20,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@fontsource/jetbrains-mono": "^5.0.20",
 		"@fontsource/manrope": "^5.0.20",
 		"lucide-svelte": "^0.379.0",
 		"open-props": "^1.7.4"

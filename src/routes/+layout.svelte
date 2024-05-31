@@ -1,5 +1,6 @@
 <script lang="js">
 	import Header from './header.svelte'
+	import Footer from './footer.svelte'
 
 	import 'open-props/style'
 	import 'open-props/normalize'
@@ -8,32 +9,13 @@
 	import '../app.css'
 </script>
 
-<div class="layout">
-	<Header />
+<div class="grid grid-cols items-stretch min-h-screen gap-x-3">
+	<Header class='top-0 p-4'/>
 
-	<main>
+	<main class="flex-grow">
 		<slot />
 	</main>
 
+
+	<Footer class='bottom-0 p-4' />
 </div>
-
-<style>
-	.layout {
-		height: 100%;
-		max-inline-size: 1440px;
-		display: grid;
-		grid-template-rows: auto 1fr auto;
-		margin-inline: auto;
-		padding-inline: var(--size-7);
-	}
-
-	main {
-		padding-block: var(--size-9);
-	}
-
-	@media (min-width: 1440px) {
-		.layout {
-			padding-inline: 0;
-		}
-	}
-</style>

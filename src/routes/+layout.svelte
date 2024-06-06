@@ -16,6 +16,5 @@
 		<slot />
 	</main>
 
-
 	<Footer class='bottom-0 p-4' />
 </div>

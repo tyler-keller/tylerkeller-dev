@@ -14,13 +14,13 @@
         <p class="pb-16">no stranger to shipping.</p>
     </div>
 
-    <div class="flex justify-center pt-8">
-        <div class="mx-auto bg-black rounded-lg inline-flex flex-col items-center justify-center p-4">
+    <!-- <div class="flex justify-center pt-8">
+        <div class="mx-auto bg-gray-800 rounded-lg inline-flex flex-col items-center justify-center p-4">
             <div class="text-center">
                 <p class="text-sm">"Anything which is not prohibited by the laws</p>
                 <p class="text-sm">of physics is possible given sufficient knowledge."</p>
             </div>
             <p class="text-xs mt-2">- Principle of Optimism</p>
         </div>
-    </div>
+    </div> -->
 </div>

@@ -9,12 +9,16 @@
 	import '../app.css'
 </script>
 
-<div class="grid grid-cols items-stretch min-h-screen gap-x-3">
+<div class="grid grid-cols items-stretch h-screen">
 	<Header class='top-0 p-4'/>
 
-	<main class="flex-grow">
+	<div class="flex-grow"></div>
+
+	<main>
 		<slot />
 	</main>
+
+	<div class="flex-grow"></div>
 
 	<Footer class='bottom-0 p-4' />
 </div>

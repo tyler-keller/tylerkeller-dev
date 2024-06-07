@@ -11,7 +11,7 @@
             <a class="hover:underline" href="https://github.com/tylerckeller">github</a>
         </li>
         <li>
-            <a class="hover:underline" href="https://x.com/tylerckeller">x</a>
+            <a class="hover:underline" href="https://x.com/0xt4k">x</a>
         </li>
     </ul>
 </div>

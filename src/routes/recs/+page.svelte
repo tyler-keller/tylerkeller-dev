@@ -8,7 +8,7 @@
             <a class="dark:text-white text-black hover:underline" href="https://en.wikipedia.org/wiki/Snow_Crash" target="_blank">snow crash by neal stephenson</a>
         </li>
         <li>
-            <a class="dark:text-white text-black hover:underline" href="https://en.wikipedia.org/wiki/Neuromancer" target="_blank">neuromancer by william bibson</a>
+            <a class="dark:text-white text-black hover:underline" href="https://en.wikipedia.org/wiki/Neuromancer" target="_blank">neuromancer by william gibson</a>
         </li>
     </div>
 </div>

@@ -20,5 +20,5 @@
 
 	<div class="flex-grow"></div>
 
-	<Footer class='bottom-0 p-4' />
+	<Footer class='bottom-0 p-4 pb-4' />
 </div>

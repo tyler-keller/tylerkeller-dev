@@ -10,7 +10,7 @@
         <!-- <p class="">no stranger to shipping.</p> -->
         <div class='md:py-8'>
             <p class="text-center pb-2">the journey so far:</p>
-            <div class="md:flex md:flex-row flex-cols text-center md:w-3/4 md:space-x-16 space-y-1">
+            <div class="md:flex md:flex-row flex-cols text-center md:w-3/4 md:space-x-16 lg:space-y-0 sm:space-y-1">
                 <p class="">TX</p>
                 <p class="">HI</p>
                 <p class="">CA</p>

@@ -1,4 +1,10 @@
 <script lang="js">
+	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+	import { inject } from '@vercel/analytics'
+
+	injectSpeedInsights();
+	inject();
+
 	import Header from './header.svelte'
 	import Footer from './footer.svelte'
 

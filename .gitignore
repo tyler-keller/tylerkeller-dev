@@ -11,3 +11,23 @@ vite.config.ts.timestamp-*
 
 .firebase*
 firebase*
+
+node_modules/
+
+.idea
+
+coverage
+*.lcov
+
+.eslintcache
+
+.env
+.env.test
+
+.vercel
+
+.DS_Store
+
+tmp
+
+benchmarking/compare/.results

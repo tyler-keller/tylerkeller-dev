@@ -9,6 +9,7 @@
         </li>
         <li>
             <a href="https://github.com/tyler-keller?tab=repositories" target="_blank" class='hover:underline'>projects</a>
+            <!-- <a href="/projects" class='hover:underline'>projects</a> -->
         </li>
         <li>
             <a href="https://0xt4k.substack.com/" target="_blank" class='hover:underline'>posts</a>

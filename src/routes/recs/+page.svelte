@@ -10,5 +10,11 @@
         <li>
             <a class="dark:text-white text-black hover:underline" href="https://en.wikipedia.org/wiki/Neuromancer" target="_blank">neuromancer by william gibson</a>
         </li>
+        <li>
+            <a class="dark:text-white text-black hover:underline" href="https://www.goodreads.com/book/show/62050269-a-brief-history-of-intelligence" target="_blank">a brief history of intelligence by max bennet</a>
+        </li>
+        <li>
+            <a class="dark:text-white text-black hover:underline" href="https://en.wikipedia.org/wiki/Neuromancer" target="_blank">mockingbird by walter tevis</a>
+        </li>
     </div>
 </div>

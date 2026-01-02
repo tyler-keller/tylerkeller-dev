@@ -31,3 +31,5 @@ coverage
 tmp
 
 benchmarking/compare/.results
+
+data.yaml

@@ -1,0 +1,143 @@
+openapi: 3.0.3
+info:
+  title: tylerkeller.dev zero-input bridge
+  version: 1.0.0
+  description: >
+    minimalist backend to aggregate automation triggers. 
+    optimized for zero-interaction nfc and geofence shortcuts.
+servers:
+  - url: https://api.tylerkeller.dev
+    description: vps production server
+
+paths:
+  /event:
+    post:
+      summary: receive automated shortcut event
+      operationId: ingestShortcutEvent
+      description: >
+        endpoints for fire-and-forget ios shortcuts.
+        the server records the timestamp of receipt automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShortcutPayload'
+      responses:
+        '200':
+          description: event logged to status.json
+
+  /activity:
+    post:
+      summary: receive local activitywatch data
+      operationId: ingestActivity
+      description: >
+        endpoint for the background macos script.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityPayload'
+      responses:
+        '200':
+          description: activity duration updated
+
+  /status:
+    get:
+      summary: retrieve dashboard state
+      operationId: getStatus
+      description: returns the current state for the single-pane-of-glass frontend.
+      responses:
+        '200':
+          description: current dashboard state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardState'
+  
+  /prestige:
+    post:
+      summary: reset cycle and archive stats
+      description: upload image of jar, archive current stats, increment level.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: level up successful
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: KEY
+
+  schemas:
+    ShortcutPayload:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: the specific trigger that occurred.
+          enum: 
+            - insulin
+            - morning_routine
+            - evening_routine
+            - home_start
+            - home_end
+            - school_start
+            - school_end
+            - work_start
+            - work_end
+            - run
+            - lift
+            - muay_thai_start
+            - muay_thai_end
+
+    ActivityPayload:
+      type: object
+      required:
+        - source
+        - duration_seconds
+      properties:
+        source:
+          type: string
+          example: "youtube"
+        duration_seconds:
+          type: integer
+          description: total accumulated seconds for the day
+
+    DashboardState:
+      type: object
+      properties:
+        last_updated:
+          type: string
+          format: date-time
+        context:
+          type: object
+          properties:
+            last_insulin_at:
+              type: string
+              format: date-time
+            current_status:
+              type: string
+              example: "lifting"
+              description: derived from the last start/entry event
+        activity:
+          type: object
+          properties:
+            youtube_minutes_today:
+              type: integer
+
+security:
+  - ApiKeyAuth: []

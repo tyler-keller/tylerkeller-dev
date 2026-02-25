@@ -32,7 +32,10 @@ tmp
 
 benchmarking/compare/.results
 
-data.yaml
+# api/
+# dashboard/
 
-api/
-dashboard/
+.ENV
+venv/
+__pycache__/
+data/

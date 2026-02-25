@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="assets/transparent_coder.png">
+  <title>dshbrd</title>
+  <style>
+    :root {
+      --bg-color: white;
+      --text-color: black;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #181A1B;
+        --text-color: white;
+        --link-color: rgb(107, 107, 255);
+      }
+    }
+
+    body {
+      font-family: monospace;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    #login-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: var(--bg-color);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: monospace;
+    }
+
+    .input-line {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    input {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid var(--text-color);
+        color: var(--text-color);
+        font-family: inherit;
+        font-size: inherit;
+        outline: none;
+    }
+
+    a, a:visited { color: var(--link-color) !important; }
+    
+    .heatmap-container {
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+    <div id="login-overlay">
+        <div class="terminal-window">
+        <p>> <span style="color:rgb(255, 118, 118)">try to break in.</span></p>
+        <div class="input-line">
+            <span>></span>
+            <input type="password" id="api-key-input" placeholder="_" autofocus>
+        </div>
+        </div>
+    </div>
+
+    <div id="dashboard-content" style="display:none;">
+        dashboard.
+        <br><br>
+
+        <br>
+        principles:
+        <br>
+        <ul>
+            <li>consistent</li>
+            <br>
+            <li>disciplined</li>
+            <br>
+            <li>reliable</li>
+            <br>
+            <li>focused</li>
+            <br>
+            <li>orderly</li>
+            <br>
+            <li>commited</li>
+            <br>
+        </ul>
+
+        <br>
+        tings:
+        <br>
+        <ul>
+            <li>produce, on net, more than you consume.</li>
+            <br>
+            <li>take insulin 15 minutes before eating.</li>
+            <br>
+            <li>maintain A1C < 7% and TIR >= 70%.</7></li>
+            <br>
+            <li>no nicotine to save your arteries.</li>
+            <br>
+            <li>no alcohol to save your liver.</li>
+            <br>
+            <li>no youtube to save your time.</li>
+            <br>
+            <li>do 30 minutes of cardio daily.</li>
+            <br>
+            <li>lift weights 3x per week.</li>
+            <br>
+        </ul>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+        <script src="scripts/heatmap.js"></script>
+        <script src="scripts/login.js"></script>
+
+        </div>
+    <script>
+        window.goatcounter = {
+            path: function(p) { return location.host + p }
+        }
+    </script>
+    <script data-goatcounter="https://tylerkeller.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
+    </body>
+    <div>
+</body>
+</html>

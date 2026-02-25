@@ -8,6 +8,7 @@
     :root {
       --bg-color: white;
       --text-color: black;
+      --link-color: rgb(107, 107, 255);
     }
 
     @media (prefers-color-scheme: dark) {
@@ -27,7 +28,7 @@
       box-sizing: border-box;
     }
 
-    a, a:visited { color: blue !important; }
+    a, a:visited { color: var(--link-color) !important; }
     
     .copy-btn {
       background: none;
@@ -82,12 +83,13 @@
 
   <br><br>
 
+  <br>
   projects:
   <br>
   <ul>
     <li>
       <div>
-        <a href="https://github.com/deal-io" target="_blank">deal.io</a> - two iOS applications to connect Mines students w/ downtown Golden deals/discounts. peaked at 117 MAU.
+        <a href="https://github.com/deal-io" target="_blank">deal.io</a> - two iOS applications to connect Mines students w/ downtown Golden deals/discounts. peaked at 117 active users.
       </div>
       <div>
         collaborators: <a href="https://www.linkedin.com/in/nathan-howland/" target="_blank">nathan howland</a> and <a href="https://www.linkedin.com/in/leviortega/" target="_blank">levi ortega</a>
@@ -101,45 +103,21 @@
     </li>
     <br>
     <li>
-      <a href="https://linedodge.tylerkeller.dev" target="_blank">linedodge.pro</a> - a little arcade game built in HTML/CSS/JS (<a href="https://github.com/tylerkeller/line-dodge" target="_blank">source</a>).
+      <a href="https://linedodge.tylerkeller.dev" target="_blank">linedodge.pro</a> - a little arcade game built in HTML/CSS/JS (<a href="https://github.com/tyler-keller/line-dodge" target="_blank">source</a>).
       <br>
       collaborators: <a href="https://wesleyhu.dev/" target="_blank">wesley hu</a>, <a href="https://github.com/ibovadilla">ivana portilla</a>, and <a href="https://www.linkedin.com/in/matthew-j-mcgrath1/">matthew mcgrath</a>
     </li>
   </ul>
 
-  tracking (2026):
   <br>
-  <br>
-  <div class="heatmap-container">
-    <div>MR:</div>
-    <br>
-    <div id="heatmap-MR"></div>
-  </div>
-  <div class="heatmap-container">
-    <div>ER:</div>
-    <br>
-    <div id="heatmap-ER"></div>
-  </div>
-  <div class="heatmap-container">
-    <div>EX:</div>
-    <br>
-    <div id="heatmap-EX"></div>
-  </div>
-
-  principles:
-  <br>
-  <ul>
-    <li>produce, on net, more than you consume</li>
-  </ul>
-
-  reads (<a href="https://www.goodreads.com/user/show/74515580-tyler" target="_blank">goodreads</a>):
+  my all-time favorite reads (<a href="https://www.goodreads.com/user/show/74515580-tyler" target="_blank">my goodreads</a>):
   <br>
   <ul>
     <li>the egg - andy weir (<a href="https://0xt4k.substack.com/p/the-egg?r=1ogqbc" target="_blank">my writeup</a>)</li>
     <br>
-    <li>the moon is a harsh mistress - robert a. heinlein</li>
-    <br>
     <li>project hail mary - andy weir</li>
+    <br>
+    <li>the changing world order - ray dalio</li>
     <br>
     <li>scythe - neal shusterman</li>
     <br>
@@ -148,7 +126,33 @@
     <li>neuromancer - william gibson</li>
     <br>
     <li>a brief history of intelligence - max bennett</li>
+    <br>
+    <li>meditations (the annotated edition) - robin waterfield</li>
+    <br>
+    <li>zero to one - peter thiel</li>
+    <br>
+    <li>the moon is a harsh mistress - robert a. heinlein</li>
   </ul>
+
+  <br>
+  principles:
+  <br>
+  <ul>
+    <li>consistent</li>
+    <br>
+    <li>disciplined</li>
+    <br>
+    <li>reliable</li>
+    <br>
+    <li>focused</li>
+    <br>
+    <li>orderly</li>
+    <br>
+    <li>commited</li>
+    <br>
+  </ul>
+
+  <li>produce, on net, more than you consume.</li>
 
   <br><br>
   inspiration for this page (<a href="https://geohot.com/" target="_blank">geohot</a>).
@@ -171,7 +175,14 @@
         });
     }
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
-  <script src="heatmap.js"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <script src="heatmap.js"></script> -->
+  <script>
+      window.goatcounter = {
+          path: function(p) { return location.host + p }
+      }
+  </script>
+  <script data-goatcounter="https://tylerkeller.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

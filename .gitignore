@@ -33,3 +33,6 @@ tmp
 benchmarking/compare/.results
 
 data.yaml
+
+api/
+dashboard/

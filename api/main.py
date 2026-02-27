@@ -3,13 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from typing import Optional
 import sqlite3
 import json
 import os
 import re
 
-# --- cors (allow dashboard to talk to api) ---
+load_dotenv()
 
 app = FastAPI()
 
@@ -26,19 +27,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- config ---
 BASE_DIR = "/var/www/tylerkeller-dev/api"
 
 DATA_DIR = os.path.join(BASE_DIR, "data")
+STATES_DIR = os.path.join(DATA_DIR, "states")
 ENV_FILE = os.path.join(BASE_DIR, ".ENV")
 
-DB_FILE = os.path.join(DATA_DIR, "history.db")
-print(DB_FILE)
-RUN_STATE_FILE = os.path.join(DATA_DIR, "run.json")
-LIFT_STATE_FILE = os.path.join(DATA_DIR, "lift.json")
+DEV_DB_FILE = os.path.join(DATA_DIR, "dev.db")
+PROD_DB_FILE = os.path.join(DATA_DIR, "history.db")
 STATUS_FILE = os.path.join(DATA_DIR, "status.json") 
 
-# --- models ---
+IS_DEV = os.environ.get("APP-ENV") == "dev"
+DB_FILE = DEV_DB_FILE if IS_DEV else PROD_DB_FILE
+
+SECRET_KEY = os.environ.get("SECRET-KEY")
+
 class ShortcutPayload(BaseModel):
     type: str
 
@@ -47,53 +50,70 @@ class ActivityPayload(BaseModel):
     duration_seconds: int
 
 class ToggleState(BaseModel):
-    status: str  # "running", "lifting", "stopped"
+    status: str
     last_change_at: str
+    row_id: Optional[int] = None
 
-# --- database (append-only log) ---
-def log_event(event_type: str, details: Optional[str] = None):
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS events 
-                     (id INTEGER PRIMARY KEY, timestamp TEXT, event_type TEXT, details TEXT)''')
-        c.execute("INSERT INTO events (timestamp, event_type, details) VALUES (?, ?, ?)",
-                  (datetime.now().isoformat(), event_type, details))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"db error: {e}")
+def get_state_path(event_name: str) -> str:
+    return os.path.join(STATES_DIR, f"{event_name}.json")
 
-# --- file helpers ---
-def load_toggle_state(filepath: str, default_status: str = "stopped") -> ToggleState:
-    with open(filepath, 'r') as f:
-        return ToggleState(**json.load(f))
+def has_suffix(event_name: str) -> bool:
+    return event_name.endswith("_start") or event_name.endswith("_end")
 
-def save_toggle_state(filepath: str, state: ToggleState):
-    print(state.model_dump())
-    with open(filepath, 'w') as f:
+def strip_suffix(event_name: str) -> str:
+    if event_name.endswith("_start"):
+        return event_name[:-6]
+    elif event_name.endswith("_end"):
+        return event_name[:-4]
+    return event_name
+
+def load_state(event_name: str) -> ToggleState:
+    path = get_state_path(event_name)
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            return ToggleState(**json.load(f))
+    return ToggleState(status="stopped", last_change_at="", row_id=None)
+
+def save_state(event_name: str, state: ToggleState):
+    path = get_state_path(event_name)
+    os.makedirs(STATES_DIR, exist_ok=True)
+    with open(path, 'w') as f:
         json.dump(state.model_dump(), f)
 
-# --- auth ---
-def get_secret(name):
-    if os.path.exists(ENV_FILE):
-        with open(ENV_FILE) as f:
-            content = f.read()
-            match = re.search(rf'{name}="([^"]+)"', content)
-            if match: return match.group(1)
-    return None
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS events 
+                 (id INTEGER PRIMARY KEY, event_name TEXT, start_time TEXT, end_time TEXT)''')
+    conn.commit()
+    conn.close()
 
-SECRET_KEY = get_secret('SECRET-KEY')
+def insert_event(event_name: str, start_time: str, end_time: Optional[str] = None) -> int:
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO events (event_name, start_time, end_time) VALUES (?, ?, ?)",
+              (event_name, start_time, end_time))
+    row_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return row_id or 0
+
+def update_event(row_id: int, end_time: str):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE events SET end_time = ? WHERE id = ?", (end_time, row_id))
+    conn.commit()
+    conn.close()
+
+init_db()
 
 def verify_key(x_key: str = Header(None)):
     if x_key != SECRET_KEY:
         raise HTTPException(401, "Invalid key")
 
-# --- core logic ---
-
 @app.get("/version")
 def version():
-    return {"version": "v1.0.0-firstgit"}
+    return {"version": "v1.0.1_database-restructure"}
 
 @app.post("/login")
 def login(x_key: str = Header(None)):
@@ -104,78 +124,30 @@ def login(x_key: str = Header(None)):
 async def handle_event(payload: ShortcutPayload, x_key: str = Header(None)):
     verify_key(x_key)
     
-    now = datetime.now()
     event_type = payload.type
+    base_event = strip_suffix(event_type)
+    now = datetime.now()
+    is_end = event_type.endswith("_end")
     
-    # --- run toggle ---
-    if event_type == "run":
-        state = load_toggle_state(RUN_STATE_FILE, "stopped")
-        last_time = datetime.fromisoformat(state.last_change_at)
-        
-        event_to_log = None
-        details_to_log = None
-
-        if state.status == "running":
-            if now - last_time < timedelta(hours=2):
-                # meaningful stop
-                state.status = "stopped"
-                state.last_change_at = now.isoformat()
-                event_to_log = "run_end"
-            else:
-                # stale run -> auto-close old one, start new one
-                # we log the cleanup immediately because it refers to the PAST event
-                log_event("run_end", "auto_closed_stale")
-                
-                state.status = "running"
-                state.last_change_at = now.isoformat()
-                event_to_log = "run_start"
-        else:
-            # start new run
-            state.status = "running"
-            state.last_change_at = now.isoformat()
-            event_to_log = "run_start"
-            
-        # save first. if this crashes, we never log the event below.
-        save_toggle_state(RUN_STATE_FILE, state)
-        if event_to_log:
-            log_event(event_to_log, details_to_log)
-
-    # --- lift toggle ---
-    elif event_type == "lift":
-        state = load_toggle_state(LIFT_STATE_FILE, "stopped")
-        last_time = datetime.fromisoformat(state.last_change_at)
-        
-        event_to_log = None
-        details_to_log = None
-        
-        if state.status == "lifting":
-            if now - last_time < timedelta(hours=2):
-                state.status = "stopped"
-                state.last_change_at = now.isoformat()
-                event_to_log = "lift_end"
-            else:
-                log_event("lift_end", "auto_closed_stale")
-                state.status = "lifting"
-                state.last_change_at = now.isoformat()
-                event_to_log = "lift_start"
-        else:
-            state.status = "lifting"
-            state.last_change_at = now.isoformat()
-            event_to_log = "lift_start"
-            
-        # save first
-        save_toggle_state(LIFT_STATE_FILE, state)
-        if event_to_log:
-            log_event(event_to_log, details_to_log)
-
-    # --- simple events ---
+    state = load_state(base_event)
+    
+    if is_end or state.status != "stopped":
+        if state.row_id:
+            update_event(state.row_id, now.isoformat())
+        state.status = "stopped"
+        state.row_id = None
     else:
-        log_event(event_type)
-
+        row_id = insert_event(base_event, now.isoformat())
+        state.status = "running"
+        state.row_id = row_id
+    
+    state.last_change_at = now.isoformat()
+    save_state(base_event, state)
+    
     return {"status": "ok"}
 
 @app.post("/activity")
 async def handle_activity(payload: ActivityPayload, x_key: str = Header(None)):
     verify_key(x_key)
-    log_event(f"activity_{payload.source}", str(payload.duration_seconds))
+    insert_event(f"activity_{payload.source}", datetime.now().isoformat())
     return {"status": "ok"}

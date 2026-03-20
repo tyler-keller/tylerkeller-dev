@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from typing import Optional
 import sqlite3
@@ -11,6 +12,15 @@ import os
 import re
 
 load_dotenv()
+
+DENVER_TZ = ZoneInfo("America/Denver")
+UTC_TZ = ZoneInfo("UTC")
+
+def now_denver():
+    return datetime.now(DENVER_TZ)
+
+def now_utc():
+    return datetime.now(UTC_TZ)
 
 app = FastAPI()
 
@@ -126,7 +136,7 @@ async def handle_event(payload: ShortcutPayload, x_key: str = Header(None)):
     
     event_type = payload.type
     base_event = strip_suffix(event_type)
-    now = datetime.now()
+    now = now_utc()
     is_end = event_type.endswith("_end")
     
     state = load_state(base_event)
@@ -149,5 +159,103 @@ async def handle_event(payload: ShortcutPayload, x_key: str = Header(None)):
 @app.post("/activity")
 async def handle_activity(payload: ActivityPayload, x_key: str = Header(None)):
     verify_key(x_key)
-    insert_event(f"activity_{payload.source}", datetime.now().isoformat())
+    insert_event(f"activity_{payload.source}", now_utc().isoformat())
     return {"status": "ok"}
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def get_last_event(event_name: str) -> Optional[dict]:
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM events WHERE event_name = ? ORDER BY id DESC LIMIT 1", (event_name,))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_today_activities() -> list:
+    today = now_denver().date().isoformat()
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM events WHERE event_name LIKE 'activity_%' AND start_time LIKE ?", (f"{today}%",))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_events_this_week(event_name: Optional[str] = None) -> list:
+    today = now_utc().date()
+    week_ago = today - timedelta(days=7)
+    conn = get_db_connection()
+    c = conn.cursor()
+    if event_name:
+        c.execute("SELECT * FROM events WHERE event_name = ? AND start_time >= ?", 
+                  (event_name, week_ago.isoformat()))
+    else:
+        c.execute("SELECT * FROM events WHERE start_time >= ?", (week_ago.isoformat(),))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_current_context() -> str:
+    contexts = ["home", "school", "work", "run", "lift", "muay_thai"]
+    for ctx in contexts:
+        state = load_state(ctx)
+        if state.status == "running":
+            return ctx
+    return "unknown"
+
+def get_total_activity_minutes_today() -> int:
+    activities = get_today_activities()
+    total_seconds = 0
+    for activity in activities:
+        duration = activity.get("duration_seconds")
+        if duration:
+            total_seconds += duration
+    return total_seconds // 60
+
+def convert_to_denver(dt_str: str) -> str:
+    if not dt_str:
+        return dt_str
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        if dt.tzinfo is None:
+            dt_utc = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt_utc = dt.astimezone(timezone.utc)
+        dt_denver = dt_utc.astimezone(DENVER_TZ)
+        return dt_denver.strftime("%Y-%m-%dT%H:%M:%S")
+    except:
+        return dt_str
+
+@app.get("/status")
+def get_status(x_key: str = Header(None)):
+    verify_key(x_key)
+    
+    last_insulin = get_last_event("insulin")
+    current_context = get_current_context()
+    activity_minutes_today = get_total_activity_minutes_today()
+    
+    this_week_events = get_events_this_week()
+    workouts_this_week = [e for e in this_week_events if e["event_name"] in ["run", "lift", "muay_thai"]]
+    
+    today = now_utc().date().isoformat()
+    today_events = [e for e in this_week_events if e["start_time"].startswith(today)]
+    
+    def convert_event_times(event):
+        event = dict(event)
+        if event.get("start_time"):
+            event["start_time"] = convert_to_denver(event["start_time"])
+        if event.get("end_time"):
+            event["end_time"] = convert_to_denver(event["end_time"])
+        return event
+    
+    return {
+        "last_insulin": convert_to_denver(last_insulin["start_time"]) if last_insulin else "",
+        "current_context": current_context,
+        "activity_minutes_today": activity_minutes_today,
+        "workouts_this_week": len(workouts_this_week),
+        "today_events": [convert_event_times(e) for e in today_events],
+        "this_week_events": [convert_event_times(e) for e in this_week_events]
+    }

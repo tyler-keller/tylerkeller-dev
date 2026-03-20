@@ -60,6 +60,56 @@
     .heatmap-container {
       margin-bottom: 15px;
     }
+
+    .viz-container {
+        margin: 10px 0 20px 0;
+        padding: 15px;
+        border: 1px solid var(--text-color);
+    }
+
+    .viz-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 8px 0;
+    }
+
+    .viz-label {
+        color: var(--link-color);
+    }
+
+    .viz-value {
+        font-weight: bold;
+    }
+
+    .timeline-event {
+        margin: 4px 0;
+    }
+
+    .timeline-time {
+        color: var(--link-color);
+        margin-right: 10px;
+    }
+
+    .context-bar {
+        height: 8px;
+        background: var(--text-color);
+        margin: 10px 0;
+        position: relative;
+    }
+
+    .context-marker {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: var(--link-color);
+        border-radius: 50%;
+        top: -2px;
+        transition: left 0.3s;
+    }
+
+    .todo-item {
+        color: #ff6b6b;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +126,38 @@
     <div id="dashboard-content" style="display:none;">
         dashboard.
         <br><br>
+
+        <br>
+        status:
+        <br>
+        <ul>
+            <li>context: <span id="current-context" class="viz-value">--</span></li>
+            <br>
+            <!-- Context visualization -->
+            <div class="viz-container">
+                <div class="context-bar">
+                    <div class="context-marker" id="context-marker" style="left: 0%;"></div>
+                </div>
+                <div class="viz-row">
+                    <span class="viz-label">Activity Today:</span>
+                    <span class="viz-value"><span id="activity-minutes">0</span> min</span>
+                </div>
+                <div class="viz-row">
+                    <span class="viz-label">Last Insulin:</span>
+                    <span class="viz-value" id="last-insulin">--</span>
+                </div>
+                <div class="viz-row">
+                    <span class="viz-label">Workouts This Week:</span>
+                    <span class="viz-value"><span id="workouts-week">0</span></span>
+                </div>
+            </div>
+            <br>
+            <li>today's events:</li>
+            <br>
+            <div id="today-timeline" class="viz-container">
+                <!-- Populated by JS -->
+            </div>
+        </ul>
 
         <br>
         principles:
@@ -101,6 +183,10 @@
         <ul>
             <li>produce, on net, more than you consume.</li>
             <br>
+            <li>morning routine before 0838 every day.</li>
+            <br>
+            <li>evening routine before 2210 every day.</li>
+            <br>
             <li>take insulin 15 minutes before eating.</li>
             <br>
             <li>maintain A1C < 7% and TIR >= 70%.</7></li>
@@ -116,6 +202,17 @@
             <li>lift weights 3x per week.</li>
             <br>
         </ul>
+
+        <br>
+        <span class="todo-item">TODO: heatmap visualization (needs ActivityWatch integration)</span>
+        <br><br>
+        <span class="todo-item">TODO: weekly/monthly trend charts</span>
+        <br><br>
+        <span class="todo-item">TODO: journal entry system (audio transcription)</span>
+        <br><br>
+        <span class="todo-item">TODO: sleep tracking integration</span>
+        <br><br>
+        <span class="todo-item">TODO: A1C/TIR tracking (manual input)</span>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
         <script src="scripts/heatmap.js"></script>

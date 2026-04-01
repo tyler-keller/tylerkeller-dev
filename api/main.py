@@ -1,6 +1,5 @@
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -9,18 +8,6 @@ from typing import Optional
 import sqlite3
 import json
 import os
-import re
-
-load_dotenv()
-
-DENVER_TZ = ZoneInfo("America/Denver")
-UTC_TZ = ZoneInfo("UTC")
-
-def now_denver():
-    return datetime.now(DENVER_TZ)
-
-def now_utc():
-    return datetime.now(UTC_TZ)
 
 app = FastAPI()
 
@@ -37,23 +24,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+load_dotenv()
+
+IS_DEV = os.environ.get("APP-ENV") == "dev"
+SECRET_KEY = os.environ.get("SECRET-KEY")
+
+DENVER_TZ = ZoneInfo("America/Denver")
+UTC_TZ = ZoneInfo("UTC")
+
 BASE_DIR = "/var/www/tylerkeller-dev/api"
 
 DATA_DIR = os.path.join(BASE_DIR, "data")
 STATES_DIR = os.path.join(DATA_DIR, "states")
-ENV_FILE = os.path.join(BASE_DIR, ".ENV")
 
 DEV_DB_FILE = os.path.join(DATA_DIR, "dev.db")
-PROD_DB_FILE = os.path.join(DATA_DIR, "history.db")
+PROD_DB_FILE = os.path.join(DATA_DIR, "prod.db")
+DB_FILE = DEV_DB_FILE if IS_DEV else PROD_DB_FILE
 STATUS_FILE = os.path.join(DATA_DIR, "status.json") 
 
-IS_DEV = os.environ.get("APP-ENV") == "dev"
-DB_FILE = DEV_DB_FILE if IS_DEV else PROD_DB_FILE
-
-SECRET_KEY = os.environ.get("SECRET-KEY")
-
-class ShortcutPayload(BaseModel):
+class DefaultShortcutPayload(BaseModel):
     type: str
+
+class MorningRoutinePayload(BaseModel):
+    type: str
+    photo: bytes
 
 class ActivityPayload(BaseModel):
     source: str
@@ -63,6 +57,12 @@ class ToggleState(BaseModel):
     status: str
     last_change_at: str
     row_id: Optional[int] = None
+
+def now_denver():
+    return datetime.now(DENVER_TZ)
+
+def now_utc():
+    return datetime.now(UTC_TZ)
 
 def get_state_path(event_name: str) -> str:
     return os.path.join(STATES_DIR, f"{event_name}.json")
@@ -131,7 +131,33 @@ def login(x_key: str = Header(None)):
     return {"status": "ok"}
 
 @app.post("/event")
-async def handle_event(payload: ShortcutPayload, x_key: str = Header(None)):
+async def handle_event(payload: DefaultShortcutPayload, x_key: str = Header(None)):
+    verify_key(x_key)
+    
+    event_type = payload.type
+    base_event = strip_suffix(event_type)
+    now = now_utc()
+    is_end = event_type.endswith("_end")
+    
+    state = load_state(base_event)
+    
+    if is_end or state.status != "stopped":
+        if state.row_id:
+            update_event(state.row_id, now.isoformat())
+        state.status = "stopped"
+        state.row_id = None
+    else:
+        row_id = insert_event(base_event, now.isoformat())
+        state.status = "running"
+        state.row_id = row_id
+    
+    state.last_change_at = now.isoformat()
+    save_state(base_event, state)
+    
+    return {"status": "ok"}
+
+@app.post("/event/morning_routine")
+async def handle_event(payload: MorningRoutinePayload, x_key: str = Header(None)):
     verify_key(x_key)
     
     event_type = payload.type

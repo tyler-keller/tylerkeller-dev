@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from typing import Optional
 import sqlite3
+import shutil
+import uuid
 import json
 import os
 
@@ -41,6 +43,14 @@ DEV_DB_FILE = os.path.join(DATA_DIR, "dev.db")
 PROD_DB_FILE = os.path.join(DATA_DIR, "prod.db")
 DB_FILE = DEV_DB_FILE if IS_DEV else PROD_DB_FILE
 STATUS_FILE = os.path.join(DATA_DIR, "status.json") 
+
+MEDIA_DIR = os.path.join(DATA_DIR, "media")
+PHOTOS_DIR = os.path.join(MEDIA_DIR, "photos")
+AUDIO_DIR = os.path.join(MEDIA_DIR, "audio")
+
+LEGACY_DIR = os.path.join(PHOTOS_DIR, "legacy")
+PROGRESS_DIR = os.path.join(PHOTOS_DIR, "progress")
+JOURNAL_DIR = os.path.join(AUDIO_DIR, "journal")
 
 class DefaultShortcutPayload(BaseModel):
     type: str
@@ -94,15 +104,22 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS events 
-                 (id INTEGER PRIMARY KEY, event_name TEXT, start_time TEXT, end_time TEXT)''')
+                 (id INTEGER PRIMARY KEY, event_name TEXT, start_time TEXT, end_time TEXT, media_path TEXT)''')
+    
+    # safely attempt to add the column if it doesn't exist in an older database
+    # try:
+    #     c.execute("ALTER TABLE events ADD COLUMN column_name DATA_TYPE")
+    # except sqlite3.OperationalError:
+    #     pass # column already exists
+        
     conn.commit()
     conn.close()
 
-def insert_event(event_name: str, start_time: str, end_time: Optional[str] = None) -> int:
+def insert_event(event_name: str, start_time: str, end_time: Optional[str] = None, media_path: Optional[str] = None) -> int:
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("INSERT INTO events (event_name, start_time, end_time) VALUES (?, ?, ?)",
-              (event_name, start_time, end_time))
+    c.execute("INSERT INTO events (event_name, start_time, end_time, media_path) VALUES (?, ?, ?, ?)",
+              (event_name, start_time, end_time, media_path))
     row_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -141,7 +158,7 @@ async def handle_event(payload: DefaultShortcutPayload, x_key: str = Header(None
     
     state = load_state(base_event)
     
-    if is_end or state.status != "stopped":
+    if is_end or state.status != "stopped" or event_type in ['morning_routine', 'evening_routine', 'insulin']:
         if state.row_id:
             update_event(state.row_id, now.isoformat())
         state.status = "stopped"
@@ -157,30 +174,28 @@ async def handle_event(payload: DefaultShortcutPayload, x_key: str = Header(None
     return {"status": "ok"}
 
 @app.post("/event/morning_routine")
-async def handle_event(payload: MorningRoutinePayload, x_key: str = Header(None)):
+async def handle_morning_routine(
+    type: str = Form(...),
+    photo: UploadFile = File(...),
+    x_key: str = Header(None)
+):
     verify_key(x_key)
     
-    event_type = payload.type
-    base_event = strip_suffix(event_type)
+    file_extension = photo.filename.split('.')[-1] if '.' in photo.filename else 'jpg'
+    unique_filename = f"{now_utc().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.{file_extension}"
+    file_path = os.path.join(PROGRESS_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(photo.file, buffer)
+        
+    base_event = strip_suffix(type)
     now = now_utc()
-    is_end = event_type.endswith("_end")
     
-    state = load_state(base_event)
+    db_media_path = f"data/media/photos/progress/{unique_filename}"
     
-    if is_end or state.status != "stopped":
-        if state.row_id:
-            update_event(state.row_id, now.isoformat())
-        state.status = "stopped"
-        state.row_id = None
-    else:
-        row_id = insert_event(base_event, now.isoformat())
-        state.status = "running"
-        state.row_id = row_id
+    insert_event(base_event, now.isoformat(), media_path=db_media_path)
     
-    state.last_change_at = now.isoformat()
-    save_state(base_event, state)
-    
-    return {"status": "ok"}
+    return {"status": "ok", "file_saved": db_media_path}
 
 @app.post("/activity")
 async def handle_activity(payload: ActivityPayload, x_key: str = Header(None)):

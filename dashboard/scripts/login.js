@@ -36,6 +36,7 @@ async function verifyAndLoad(key) {
             loadStatus();
             loadSheet();
             loadJournals();
+            loadHeatmap();
             initProgressViewer();
         } else {
             input.value = '';

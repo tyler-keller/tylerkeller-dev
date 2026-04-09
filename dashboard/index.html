@@ -4,282 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="assets/transparent_coder.png">
   <title>dshbrd</title>
-  <style>
-    :root {
-      --bg-color: white;
-      --text-color: black;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg-color: #181A1B;
-        --text-color: white;
-        --link-color: rgb(107, 107, 255);
-      }
-    }
-
-    body {
-      font-family: monospace;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-
-    #login-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: var(--bg-color);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: monospace;
-    }
-
-    .input-line {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-    }
-
-    input {
-        background: transparent;
-        border: none;
-        border-bottom: 1px solid var(--text-color);
-        color: var(--text-color);
-        font-family: inherit;
-        font-size: inherit;
-        outline: none;
-    }
-
-    a, a:visited { color: var(--link-color) !important; }
-    
-    .heatmap-container {
-      margin-bottom: 15px;
-    }
-
-    .viz-container {
-        margin: 10px 0 20px 0;
-        padding: 15px;
-        border: 1px solid var(--text-color);
-    }
-
-    .viz-row {
-        display: flex;
-        justify-content: space-between;
-        margin: 8px 0;
-    }
-
-    .viz-label {
-        color: var(--link-color);
-    }
-
-    .viz-value {
-        font-weight: bold;
-    }
-
-    .timeline-event {
-        margin: 4px 0;
-    }
-
-    .timeline-time {
-        color: var(--link-color);
-        margin-right: 10px;
-    }
-
-    .context-bar {
-        height: 8px;
-        background: var(--text-color);
-        margin: 10px 0;
-        position: relative;
-    }
-
-    .context-marker {
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        background: var(--link-color);
-        border-radius: 50%;
-        top: -2px;
-        transition: left 0.3s;
-    }
-
-    .todo-item {
-        color: #ff6b6b;
-    }
-
-    .data-sheet {
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 0.85em;
-    }
-
-    .data-sheet th,
-    .data-sheet td {
-        border: 1px solid var(--text-color);
-        padding: 6px 10px;
-        text-align: center;
-    }
-
-    .data-sheet th {
-        color: var(--link-color);
-        font-weight: normal;
-    }
-
-    .data-sheet td {
-        white-space: nowrap;
-    }
-
-    .check {
-        color: #4caf50;
-    }
-
-    .miss {
-        color: #666;
-    }
-
-    .progress-controls {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        flex-wrap: wrap;
-        margin-bottom: 15px;
-    }
-
-    .progress-controls label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .progress-controls select,
-    .progress-controls button {
-        background: transparent;
-        border: 1px solid var(--text-color);
-        color: var(--text-color);
-        font-family: monospace;
-        font-size: inherit;
-        padding: 4px 8px;
-        cursor: pointer;
-    }
-
-    .progress-controls button:hover {
-        background: var(--text-color);
-        color: var(--bg-color);
-    }
-
-    .progress-display {
-        position: relative;
-        width: 100%;
-        max-width: 600px;
-        aspect-ratio: 3/4;
-        border: 1px solid var(--text-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .progress-placeholder {
-        color: #666;
-    }
-
-    .progress-image-container {
-        position: relative;
-        width: 100%;
-        height: 100%;
-    }
-
-    .progress-image-container img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-    }
-
-    .progress-date-overlay {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        background: rgba(0,0,0,0.6);
-        color: white;
-        padding: 4px 10px;
-        font-size: 0.85em;
-    }
-
-    .journal-entry {
-        border: 1px solid var(--text-color);
-        margin-bottom: 12px;
-        cursor: pointer;
-    }
-
-    .journal-header {
-        padding: 8px 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .journal-date {
-        color: var(--link-color);
-    }
-
-    .journal-toggle {
-        font-size: 1.2em;
-    }
-
-    .journal-body {
-        display: none;
-        padding: 0 12px 12px 12px;
-        border-top: 1px solid var(--text-color);
-    }
-
-    .journal-body.open {
-        display: block;
-    }
-
-    .journal-tags {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin: 8px 0;
-    }
-
-    .journal-tag {
-        border: 1px solid var(--link-color);
-        color: var(--link-color);
-        padding: 2px 8px;
-        font-size: 0.8em;
-    }
-
-    .journal-summary {
-        margin: 8px 0;
-        line-height: 1.5;
-    }
-
-    .journal-transcription {
-        margin: 8px 0;
-        max-height: 200px;
-        overflow-y: auto;
-        color: #888;
-        font-size: 0.9em;
-        line-height: 1.4;
-    }
-
-    .journal-audio {
-        margin: 8px 0;
-    }
-
-    .journal-audio audio {
-        width: 100%;
-    }
-
-    .journal-no-meta {
-        color: #666;
-        font-style: italic;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="login-overlay">
@@ -296,85 +21,29 @@
         dashboard.
         <br><br>
 
-        <br>
-        status:
-        <br>
-        <ul>
-            <li>context: <span id="current-context" class="viz-value">--</span></li>
-            <br>
-            <!-- Context visualization -->
-            <div class="viz-container">
-                <div class="context-bar">
-                    <div class="context-marker" id="context-marker" style="left: 0%;"></div>
-                </div>
-                <div class="viz-row">
-                    <span class="viz-label">Activity Today:</span>
-                    <span class="viz-value"><span id="activity-minutes">0</span> min</span>
-                </div>
-                <div class="viz-row">
-                    <span class="viz-label">Last Insulin:</span>
-                    <span class="viz-value" id="last-insulin">--</span>
-                </div>
-                <div class="viz-row">
-                    <span class="viz-label">Workouts This Week:</span>
-                    <span class="viz-value"><span id="workouts-week">0</span></span>
-                </div>
-            </div>
-            <br>
-            <li>today's events:</li>
-            <br>
-            <div id="today-timeline" class="viz-container">
-                <!-- Populated by JS -->
-            </div>
-        </ul>
-
-        <br>
-        principles:
-        <br>
-        <ul>
-            <li>consistent</li>
-            <br>
-            <li>disciplined</li>
-            <br>
-            <li>reliable</li>
-            <br>
-            <li>focused</li>
-            <br>
-            <li>orderly</li>
-            <br>
-            <li>commited</li>
-            <br>
-        </ul>
-
-        <br>
-        tings:
-        <br>
-        <ul>
-            <li>produce, on net, more than you consume.</li>
-            <br>
-            <li>morning routine before 0838 every day.</li>
-            <br>
-            <li>evening routine before 2210 every day.</li>
-            <br>
-            <li>take insulin 15 minutes before eating.</li>
-            <br>
-            <li>maintain A1C < 7% and TIR >= 70%.</7></li>
-            <br>
-            <li>no nicotine to save your arteries.</li>
-            <br>
-            <li>no alcohol to save your liver.</li>
-            <br>
-            <li>no youtube to save your time.</li>
-            <br>
-            <li>do 30 minutes of cardio daily.</li>
-            <br>
-            <li>lift weights 3x per week.</li>
-            <br>
-        </ul>
-
-        <br>
-        <span class="todo-item">TODO: heatmap visualization (needs ActivityWatch integration)</span>
+        heatmap:
         <br><br>
+        <div class="viz-container">
+            <div class="heatmap-controls">
+                <button id="heatmap-prev" class="heatmap-nav">&lt;</button>
+                <span id="heatmap-year"></span>
+                <button id="heatmap-next" class="heatmap-nav">&gt;</button>
+            </div>
+            <div id="heatmap-grid" class="heatmap-grid">
+                <div class="heatmap-loading">loading...</div>
+            </div>
+            <div class="heatmap-legend">
+                <span>less</span>
+                <div class="heatmap-legend-cell" style="opacity:0"></div>
+                <div class="heatmap-legend-cell" style="opacity:0.25"></div>
+                <div class="heatmap-legend-cell" style="opacity:0.5"></div>
+                <div class="heatmap-legend-cell" style="opacity:0.75"></div>
+                <div class="heatmap-legend-cell" style="opacity:1"></div>
+                <span>more</span>
+            </div>
+        </div>
+
+        <br>
         <span class="todo-item">TODO: weekly/monthly trend charts</span>
         <br><br>
         <span class="todo-item">TODO: journal entry system (audio transcription)</span>
@@ -423,36 +92,12 @@
             <div id="journals-list" style="display:none;"></div>
         </div>
 
-        <br><br>
-        data sheet:
-        <br><br>
-        <div class="sheet-container" style="overflow-x: auto;">
-            <table id="data-sheet" class="data-sheet">
-                <thead>
-                    <tr>
-                        <th>date</th>
-                        <th>morning</th>
-                        <th>evening</th>
-                        <th>lift</th>
-                        <th>muay thai</th>
-                        <th>run</th>
-                        <th>school (h)</th>
-                        <th>home (h)</th>
-                        <th>work (h)</th>
-                        <!-- <th>away (h)</th> -->
-                    </tr>
-                </thead>
-                <tbody id="sheet-body">
-                </tbody>
-            </table>
-        </div>
-
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+        <script src="scripts/heatmap.js"></script>
         <script src="scripts/login.js"></script>
         <script src="scripts/journals.js"></script>
         <script src="scripts/data_sheet.js"></script>
         <script src="scripts/progress.js"></script>
-        <script src="scripts/heatmap.js"></script>
 
         </div>
     <script>

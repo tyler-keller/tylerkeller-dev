@@ -85,8 +85,19 @@ sudo certbot --nginx -d api.tylerkeller.dev
 The API will be available at `https://api.tylerkeller.dev`.
 
 Test endpoints:
+Status:
 ```bash
 curl -X GET https://api.tylerkeller.dev/status -H "X-Key: your-secret-key"
+```
+
+Photo upload:
+```bash
+curl -X POST http://127.0.0.1:6969/event/morning_routine -H 'X-Key: no-sir-not-today' -F "type=morning_routine" -F "photo=@"
+```
+
+Audio upload:
+```bash
+curl -X POST http://127.0.0.1:6969/event/morning_routine -H 'X-Key: haha-you-thought' -F "type=evening_routine" -F "audio=@"
 ```
 
 ## Record of Problems
@@ -123,3 +134,9 @@ This section documents specific edge cases, limitations, and hard-learned lesson
 
 ### 7. Database Architecture: SQLite & Integer Keys
 - **The Logic:** For a single-user, zero-input tracking system, SQLite is optimal. There is no need for PostgreSQL overhead. Furthermore, stick to auto-incrementing integer IDs rather than UUIDs. UUIDs solve distributed syncing and public scraping vulnerabilities—neither of which apply to a private API secured by a hardcoded header key. Integers keep the database small and make manual querying significantly easier.
+
+## Journal Stuff
+
+### Whisper Tests
+
+Trying out both `` and ``

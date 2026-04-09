@@ -110,6 +110,103 @@
     .todo-item {
         color: #ff6b6b;
     }
+
+    .data-sheet {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.85em;
+    }
+
+    .data-sheet th,
+    .data-sheet td {
+        border: 1px solid var(--text-color);
+        padding: 6px 10px;
+        text-align: center;
+    }
+
+    .data-sheet th {
+        color: var(--link-color);
+        font-weight: normal;
+    }
+
+    .data-sheet td {
+        white-space: nowrap;
+    }
+
+    .check {
+        color: #4caf50;
+    }
+
+    .miss {
+        color: #666;
+    }
+
+    .progress-controls {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+
+    .progress-controls label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-controls select,
+    .progress-controls button {
+        background: transparent;
+        border: 1px solid var(--text-color);
+        color: var(--text-color);
+        font-family: monospace;
+        font-size: inherit;
+        padding: 4px 8px;
+        cursor: pointer;
+    }
+
+    .progress-controls button:hover {
+        background: var(--text-color);
+        color: var(--bg-color);
+    }
+
+    .progress-display {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+        aspect-ratio: 3/4;
+        border: 1px solid var(--text-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .progress-placeholder {
+        color: #666;
+    }
+
+    .progress-image-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    .progress-image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .progress-date-overlay {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 4px 10px;
+        font-size: 0.85em;
+    }
   </style>
 </head>
 <body>
@@ -213,6 +310,61 @@
         <span class="todo-item">TODO: sleep tracking integration</span>
         <br><br>
         <span class="todo-item">TODO: A1C/TIR tracking (manual input)</span>
+
+        <br><br>
+        progress viewer:
+        <br><br>
+        <div class="progress-viewer" id="progress-viewer" style="display:none;">
+            <div class="progress-controls">
+                <label>
+                    <input type="checkbox" id="show-progress-toggle"> SHOW?
+                </label>
+                <label>
+                    speed:
+                    <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="2">
+                    <span id="speed-value">2s</span>
+                </label>
+                <label>
+                    range:
+                    <select id="range-select">
+                        <option value="this_month">this month</option>
+                        <option value="this_year">this year</option>
+                        <option value="all_time" selected>all time</option>
+                    </select>
+                </label>
+                <button id="reset-btn">reset</button>
+            </div>
+            <div class="progress-display" id="progress-display">
+                <div class="progress-placeholder">click SHOW? to start</div>
+                <div class="progress-image-container" id="progress-image-container" style="display:none;">
+                    <img id="progress-image" src="" alt="progress">
+                    <div class="progress-date-overlay" id="progress-date-overlay"></div>
+                </div>
+            </div>
+        </div>
+
+        <br><br>
+        data sheet:
+        <br><br>
+        <div class="sheet-container" style="overflow-x: auto;">
+            <table id="data-sheet" class="data-sheet">
+                <thead>
+                    <tr>
+                        <th>date</th>
+                        <th>morning</th>
+                        <th>evening</th>
+                        <th>lift</th>
+                        <th>muay thai</th>
+                        <th>run</th>
+                        <th>school (h)</th>
+                        <th>home (h)</th>
+                        <th>work (h)</th>
+                    </tr>
+                </thead>
+                <tbody id="sheet-body">
+                </tbody>
+            </table>
+        </div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
         <script src="scripts/heatmap.js"></script>

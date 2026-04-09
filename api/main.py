@@ -1,15 +1,23 @@
-from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from typing import Optional
+from groq import Groq
 import sqlite3
+import secrets
 import shutil
 import uuid
 import json
 import os
+
+load_dotenv()
+
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
 
 app = FastAPI()
 
@@ -25,8 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-load_dotenv()
 
 IS_DEV = os.environ.get("APP-ENV") == "dev"
 SECRET_KEY = os.environ.get("SECRET-KEY")
@@ -52,12 +58,11 @@ LEGACY_DIR = os.path.join(PHOTOS_DIR, "legacy")
 PROGRESS_DIR = os.path.join(PHOTOS_DIR, "progress")
 JOURNAL_DIR = os.path.join(AUDIO_DIR, "journal")
 
+WHISPER_MODEL = "whisper-large-v3"
+LLM_MODEL = "openai/gpt-oss-120b"
+
 class DefaultShortcutPayload(BaseModel):
     type: str
-
-class MorningRoutinePayload(BaseModel):
-    type: str
-    photo: bytes
 
 class ActivityPayload(BaseModel):
     source: str
@@ -104,39 +109,46 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS events 
-                 (id INTEGER PRIMARY KEY, event_name TEXT, start_time TEXT, end_time TEXT, media_path TEXT)''')
+                (id INTEGER PRIMARY KEY, event_name TEXT, start_time TEXT, end_time TEXT, media_path TEXT, metadata TEXT)''')
     
     # safely attempt to add the column if it doesn't exist in an older database
-    # try:
-    #     c.execute("ALTER TABLE events ADD COLUMN column_name DATA_TYPE")
-    # except sqlite3.OperationalError:
-    #     pass # column already exists
+    try:
+        c.execute("ALTER TABLE events ADD COLUMN metadata TEXT")
+    except sqlite3.OperationalError:
+        pass
         
     conn.commit()
     conn.close()
 
-def insert_event(event_name: str, start_time: str, end_time: Optional[str] = None, media_path: Optional[str] = None) -> int:
+def insert_event(event_name: str, start_time: str, end_time: Optional[str] = None, media_path: Optional[str] = None, metadata: Optional[str] = None) -> int:
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("INSERT INTO events (event_name, start_time, end_time, media_path) VALUES (?, ?, ?, ?)",
-              (event_name, start_time, end_time, media_path))
+    c.execute("INSERT INTO events (event_name, start_time, end_time, media_path, metadata) VALUES (?, ?, ?, ?, ?)",
+              (event_name, start_time, end_time, media_path, metadata))
     row_id = c.lastrowid
     conn.commit()
     conn.close()
     return row_id or 0
 
-def update_event(row_id: int, end_time: str):
+def update_event_end_time(row_id: int, end_time: str):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("UPDATE events SET end_time = ? WHERE id = ?", (end_time, row_id))
     conn.commit()
     conn.close()
 
+def update_event_metadata(row_id: int, metadata_dict: dict):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE events SET metadata = ? WHERE id = ?", (json.dumps(metadata_dict), row_id))
+    conn.commit()
+    conn.close()
+
 init_db()
 
 def verify_key(x_key: str = Header(None)):
-    if x_key != SECRET_KEY:
-        raise HTTPException(401, "Invalid key")
+    if not x_key or not secrets.compare_digest(x_key, SECRET_KEY):
+        raise HTTPException(status_code=401, detail="Invalid key")
 
 @app.get("/version")
 def version():
@@ -160,7 +172,7 @@ async def handle_event(payload: DefaultShortcutPayload, x_key: str = Header(None
     
     if is_end or state.status != "stopped" or event_type in ['morning_routine', 'evening_routine', 'insulin']:
         if state.row_id:
-            update_event(state.row_id, now.isoformat())
+            update_event_end_time(state.row_id, now.isoformat())
         state.status = "stopped"
         state.row_id = None
     else:
@@ -177,6 +189,7 @@ async def handle_event(payload: DefaultShortcutPayload, x_key: str = Header(None
 async def handle_morning_routine(
     type: str = Form(...),
     photo: UploadFile = File(...),
+    weight: Optional[float] = Form(None),
     x_key: str = Header(None)
 ):
     verify_key(x_key)
@@ -193,9 +206,103 @@ async def handle_morning_routine(
     
     db_media_path = f"data/media/photos/progress/{unique_filename}"
     
-    insert_event(base_event, now.isoformat(), media_path=db_media_path)
+    metadata = json.dumps({"weight": weight}) if weight is not None else None
+    row_id = insert_event(base_event, now.isoformat(), media_path=db_media_path, metadata=metadata)
     
-    return {"status": "ok", "file_saved": db_media_path}
+    return {"status": "ok", "file_saved": db_media_path, "row_id": row_id}
+
+# update the endpoint to use the background task
+@app.post("/event/evening_routine")
+async def handle_evening_routine(
+    background_tasks: BackgroundTasks,
+    type: str = Form(...),
+    audio: UploadFile = File(...),
+    x_key: str = Header(None)
+):
+    verify_key(x_key)
+    
+    file_extension = audio.filename.split('.')[-1]
+    unique_filename = f"{now_utc().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.{file_extension}"
+    file_path = os.path.join(JOURNAL_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(audio.file, buffer)
+        
+    base_event = strip_suffix(type)
+    now = now_utc()
+    db_media_path = f"data/media/audio/journal/{unique_filename}"
+    
+    row_id = insert_event(base_event, now.isoformat(), media_path=db_media_path)
+    
+    # background task... so shortcut doesn't hang while a 10 min ting is transcribed
+    background_tasks.add_task(process_evening_routine, row_id, file_path)
+    
+    return {"status": "ok", "file_saved": db_media_path, "processing": "background"}
+    
+# background worker
+def process_evening_routine(row_id: int, file_path: str):
+    with open(file_path, "rb") as file:
+        transcription = client.audio.transcriptions.create(
+            file=(file_path, file.read()),
+            model=WHISPER_MODEL,
+            temperature=0,
+            response_format="json",
+            language="en"
+        )
+    
+    text = transcription.text
+    
+    response = client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=[
+            {"role": "system", "content": "Summarize the following journal entry. Extract a mood integer on a scale of 1-5. Extract all tasks that need completion. Extract all relevant tags from the journal entry."},
+            {
+                "role": "user",
+                "content": text,
+            },
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "journal_summary",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {"type": "string"},
+                        "mood": {
+                            "type": "number", 
+                            "enum": [1, 2, 3, 4, 5]
+                        },
+                        "sentiment": {
+                            "type": "string",
+                            "enum": ["positive", "negative", "neutral"]
+                        },
+                        "key_features": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        }
+                    },
+                    "required": ["summary", "mood", "sentiment", "key_features"],
+                    "additionalProperties": False
+                }
+            }
+        }
+    )
+
+    result = json.loads(response.choices[0].message.content or "{}")
+
+    metadata = {
+        "transcription": text,
+        "summary": result.summary,
+        "mood": result.mood,
+        "action_items_created": False
+    }
+    
+    update_event_metadata(row_id, metadata)
+
+def process_todoist_tasks():
+    pass
 
 @app.post("/activity")
 async def handle_activity(payload: ActivityPayload, x_key: str = Header(None)):
@@ -300,3 +407,123 @@ def get_status(x_key: str = Header(None)):
         "today_events": [convert_event_times(e) for e in today_events],
         "this_week_events": [convert_event_times(e) for e in this_week_events]
     }
+
+def get_daily_sheet_data() -> list:
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM events ORDER BY start_time ASC")
+    rows = c.fetchall()
+    conn.close()
+    
+    days = {}
+    for row in rows:
+        event = dict(row)
+        start_dt = datetime.fromisoformat(event["start_time"])
+        if start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=UTC_TZ)
+        denver_dt = start_dt.astimezone(DENVER_TZ)
+        day_key = denver_dt.date().isoformat()
+        
+        if day_key not in days:
+            days[day_key] = {
+                "date": day_key,
+                "morning_routine": False,
+                "evening_routine": False,
+                "lift": False,
+                "muay_thai": False,
+                "run": False,
+                "school_minutes": 0,
+                "home_minutes": 0,
+                "work_minutes": 0
+            }
+        
+        event_name = event["event_name"]
+        if event_name == "morning_routine":
+            days[day_key]["morning_routine"] = True
+        elif event_name == "evening_routine":
+            days[day_key]["evening_routine"] = True
+        elif event_name == "lift":
+            days[day_key]["lift"] = True
+        elif event_name == "muay_thai":
+            days[day_key]["muay_thai"] = True
+        elif event_name == "run":
+            days[day_key]["run"] = True
+        elif event_name == "school":
+            if event.get("end_time"):
+                end_dt = datetime.fromisoformat(event["end_time"])
+                if end_dt.tzinfo is None:
+                    end_dt = end_dt.replace(tzinfo=UTC_TZ)
+                denver_end = end_dt.astimezone(DENVER_TZ)
+                delta = denver_end - denver_dt
+                days[day_key]["school_minutes"] += int(delta.total_seconds() / 60)
+        elif event_name == "home":
+            if event.get("end_time"):
+                end_dt = datetime.fromisoformat(event["end_time"])
+                if end_dt.tzinfo is None:
+                    end_dt = end_dt.replace(tzinfo=UTC_TZ)
+                denver_end = end_dt.astimezone(DENVER_TZ)
+                delta = denver_end - denver_dt
+                days[day_key]["home_minutes"] += int(delta.total_seconds() / 60)
+        elif event_name == "work":
+            if event.get("end_time"):
+                end_dt = datetime.fromisoformat(event["end_time"])
+                if end_dt.tzinfo is None:
+                    end_dt = end_dt.replace(tzinfo=UTC_TZ)
+                denver_end = end_dt.astimezone(DENVER_TZ)
+                delta = denver_end - denver_dt
+                days[day_key]["work_minutes"] += int(delta.total_seconds() / 60)
+    
+    sheet = list(days.values())
+    sheet.sort(key=lambda d: d["date"], reverse=True)
+    
+    for day in sheet:
+        day["school_hours"] = round(day["school_minutes"] / 60, 2)
+        day["home_hours"] = round(day["home_minutes"] / 60, 2)
+        day["work_hours"] = round(day["work_minutes"] / 60, 2)
+    
+    return sheet
+
+@app.get("/data/sheet")
+def get_data_sheet(x_key: str = Header(None)):
+    verify_key(x_key)
+    return get_daily_sheet_data()
+
+@app.get("/data/progress_photos")
+def get_progress_photos(range: str = "all_time", x_key: str = Header(None)):
+    verify_key(x_key)
+    
+    files = sorted(os.listdir(PROGRESS_DIR))
+    photos = []
+    now = now_denver()
+    
+    for fname in files:
+        if not fname.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+            continue
+        
+        date_str = fname.split('_')[0]
+        try:
+            photo_date = datetime.strptime(date_str, '%Y%m%d').replace(tzinfo=DENVER_TZ)
+        except ValueError:
+            continue
+        
+        if range == "this_month" and photo_date.month != now.month:
+            continue
+        elif range == "this_year" and photo_date.year != now.year:
+            continue
+        
+        photos.append({
+            "filename": fname,
+            "date": photo_date.strftime("%Y-%m-%d"),
+            "url": f"/data/media/photos/progress/{fname}"
+        })
+    
+    return photos
+
+@app.get("/data/media/photos/progress/{filename}")
+def serve_progress_photo(filename: str, x_key: str = Header(None)):
+    verify_key(x_key)
+    from fastapi.responses import FileResponse
+    file_path = os.path.join(PROGRESS_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return FileResponse(file_path)

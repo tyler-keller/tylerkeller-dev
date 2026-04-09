@@ -359,3 +359,13 @@ a, a:visited { color: var(--link-color) !important; }
 .heatmap-tooltip-miss {
     color: #666;
 }
+
+.timeline-chart {
+    margin-bottom: 10px;
+    overflow-x: auto;
+}
+
+.timeline-legend {
+    margin-top: 6px;
+    overflow-x: auto;
+}

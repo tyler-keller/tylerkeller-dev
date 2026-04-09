@@ -21,6 +21,17 @@
         dashboard.
         <br><br>
 
+        time:
+        <br><br>
+        <div class="viz-container">
+            <div id="timeline-today" class="timeline-chart"></div>
+            <div id="timeline-7d" class="timeline-chart"></div>
+            <div id="timeline-month" class="timeline-chart"></div>
+            <div id="timeline-year" class="timeline-chart"></div>
+            <div id="timeline-legend" class="timeline-legend"></div>
+        </div>
+
+        <br>
         heatmap:
         <br><br>
         <div class="viz-container">
@@ -42,15 +53,6 @@
                 <span>more</span>
             </div>
         </div>
-
-        <br>
-        <span class="todo-item">TODO: weekly/monthly trend charts</span>
-        <br><br>
-        <span class="todo-item">TODO: journal entry system (audio transcription)</span>
-        <br><br>
-        <span class="todo-item">TODO: sleep tracking integration</span>
-        <br><br>
-        <span class="todo-item">TODO: A1C/TIR tracking (manual input)</span>
 
         <br><br>
         progress viewer:
@@ -93,6 +95,7 @@
         </div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+        <script src="scripts/timeline.js"></script>
         <script src="scripts/heatmap.js"></script>
         <script src="scripts/login.js"></script>
         <script src="scripts/journals.js"></script>

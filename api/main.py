@@ -531,8 +531,8 @@ def get_daily_sheet_data() -> list:
         day["school_hours"] = round(day["school_minutes"] / 60, 2)
         day["home_hours"] = round(day["home_minutes"] / 60, 2)
         day["work_hours"] = round(day["work_minutes"] / 60, 2)
-        away_minutes = 1440 - day["home_minutes"] - day["school_minutes"] - day["work_minutes"]
-        day["away_hours"] = round(away_minutes / 60, 2)
+        # away_minutes = 1440 - day["home_minutes"] - day["school_minutes"] - day["work_minutes"]
+        # day["away_hours"] = round(away_minutes / 60, 2)
     
     return sheet
 

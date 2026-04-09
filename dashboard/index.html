@@ -207,6 +207,78 @@
         padding: 4px 10px;
         font-size: 0.85em;
     }
+
+    .journal-entry {
+        border: 1px solid var(--text-color);
+        margin-bottom: 12px;
+        cursor: pointer;
+    }
+
+    .journal-header {
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .journal-date {
+        color: var(--link-color);
+    }
+
+    .journal-toggle {
+        font-size: 1.2em;
+    }
+
+    .journal-body {
+        display: none;
+        padding: 0 12px 12px 12px;
+        border-top: 1px solid var(--text-color);
+    }
+
+    .journal-body.open {
+        display: block;
+    }
+
+    .journal-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin: 8px 0;
+    }
+
+    .journal-tag {
+        border: 1px solid var(--link-color);
+        color: var(--link-color);
+        padding: 2px 8px;
+        font-size: 0.8em;
+    }
+
+    .journal-summary {
+        margin: 8px 0;
+        line-height: 1.5;
+    }
+
+    .journal-transcription {
+        margin: 8px 0;
+        max-height: 200px;
+        overflow-y: auto;
+        color: #888;
+        font-size: 0.9em;
+        line-height: 1.4;
+    }
+
+    .journal-audio {
+        margin: 8px 0;
+    }
+
+    .journal-audio audio {
+        width: 100%;
+    }
+
+    .journal-no-meta {
+        color: #666;
+        font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -344,6 +416,14 @@
         </div>
 
         <br><br>
+        journals:
+        <br><br>
+        <div id="journals-container" class="viz-container">
+            <div id="journals-loading">loading...</div>
+            <div id="journals-list" style="display:none;"></div>
+        </div>
+
+        <br><br>
         data sheet:
         <br><br>
         <div class="sheet-container" style="overflow-x: auto;">
@@ -359,6 +439,7 @@
                         <th>school (h)</th>
                         <th>home (h)</th>
                         <th>work (h)</th>
+                        <th>away (h)</th>
                     </tr>
                 </thead>
                 <tbody id="sheet-body">
@@ -368,6 +449,7 @@
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
         <script src="scripts/heatmap.js"></script>
+        <script src="scripts/journals.js"></script>
         <script src="scripts/login.js"></script>
 
         </div>

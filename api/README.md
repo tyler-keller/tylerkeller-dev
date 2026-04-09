@@ -100,6 +100,12 @@ Audio upload:
 curl -X POST http://127.0.0.1:6969/event/morning_routine -H 'X-Key: haha-you-thought' -F "type=evening_routine" -F "audio=@"
 ```
 
+### 5. NO LEAKED KEYS
+
+```bash
+grep -REi ""
+```
+
 ## Record of Problems
 
 ### 04/01 0135

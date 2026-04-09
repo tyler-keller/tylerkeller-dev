@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from zoneinfo import ZoneInfo
 from typing import Optional
 from groq import Groq
+import requests
 import sqlite3
 import secrets
 import shutil
@@ -15,27 +16,10 @@ import os
 
 load_dotenv()
 
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
-)
-
-app = FastAPI()
-
-origins = [
-    "https://dashboard.tylerkeller.dev", 
-    "http://localhost:8000" 
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 IS_DEV = os.environ.get("APP-ENV") == "dev"
 SECRET_KEY = os.environ.get("SECRET-KEY")
+TODOIST_API_KEY = os.getenv("TODOIST_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 DENVER_TZ = ZoneInfo("America/Denver")
 UTC_TZ = ZoneInfo("UTC")
@@ -60,6 +44,25 @@ JOURNAL_DIR = os.path.join(AUDIO_DIR, "journal")
 
 WHISPER_MODEL = "whisper-large-v3"
 LLM_MODEL = "openai/gpt-oss-120b"
+
+client = Groq(
+    api_key=GROQ_API_KEY,
+)
+
+app = FastAPI()
+
+origins = [
+    "https://dashboard.tylerkeller.dev", 
+    "http://localhost:8000" 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class DefaultShortcutPayload(BaseModel):
     type: str
@@ -255,7 +258,10 @@ def process_evening_routine(row_id: int, file_path: str):
     response = client.chat.completions.create(
         model=LLM_MODEL,
         messages=[
-            {"role": "system", "content": "Summarize the following journal entry. Extract a mood integer on a scale of 1-5. Extract all tasks that need completion. Extract all relevant tags from the journal entry."},
+            {
+                "role": "system", 
+                "content": "Summarize the journal entry. Extract any relevant tags (i.e. 'work', 'health', 'fitness', 'relationships', 'social', 'learning', 'growth', etc.). Extract all tasks that need completion. For task due_strings, use any of the following: 'today', 'tomorrow', 'next week', '<weekday>' (e.g. 'Friday'), '<date>' (e.g. 'April 1st'). If no deadline is implied, use 'today'."
+            },
             {
                 "role": "user",
                 "content": text,
@@ -270,20 +276,26 @@ def process_evening_routine(row_id: int, file_path: str):
                     "type": "object",
                     "properties": {
                         "summary": {"type": "string"},
-                        "mood": {
-                            "type": "number", 
-                            "enum": [1, 2, 3, 4, 5]
-                        },
-                        "sentiment": {
-                            "type": "string",
-                            "enum": ["positive", "negative", "neutral"]
-                        },
-                        "key_features": {
+                        "tags": {
                             "type": "array",
                             "items": {"type": "string"}
+                        },
+                        "tasks": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "content": {"type": "string"},
+                                    "description": {"type": "string"},
+                                    "priority": {"type": "integer", "enum": [1, 2, 3, 4]},
+                                    "due_string": {"type": "string"}
+                                },
+                                "required": ["content", "description", "priority", "due_string"],
+                                "additionalProperties": False
+                            }
                         }
                     },
-                    "required": ["summary", "mood", "sentiment", "key_features"],
+                    "required": ["summary", "tags", "tasks"],
                     "additionalProperties": False
                 }
             }
@@ -291,18 +303,57 @@ def process_evening_routine(row_id: int, file_path: str):
     )
 
     result = json.loads(response.choices[0].message.content or "{}")
+    extracted_tasks = result.get("tasks", [])
+    
+    tasks_created = False
+    if extracted_tasks:
+        tasks_created = process_todoist_tasks(extracted_tasks)
 
     metadata = {
         "transcription": text,
-        "summary": result.summary,
-        "mood": result.mood,
-        "action_items_created": False
+        "summary": result.get("summary"),
+        "tags": result.get("tags"),
+        "tasks_extracted": extracted_tasks, 
+        "all_tasks_created": tasks_created
     }
     
     update_event_metadata(row_id, metadata)
 
-def process_todoist_tasks():
-    pass
+def process_todoist_tasks(tasks: list) -> bool:
+    if not tasks:
+        return False
+        
+    headers = {
+        "Authorization": f"Bearer {TODOIST_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    all_successful = True
+    
+    for task in tasks:
+        # the rest api takes a flat json object per task
+        payload = {
+            "content": task.get("content"),
+            "description": task.get("description", ""),
+            "priority": task.get("priority", 1),
+            "due_string": task.get("due_string", "today") 
+        }
+        
+        try:
+            response = requests.post(
+                "https://api.todoist.com/api/v1/tasks", 
+                json=payload, 
+                headers=headers
+            )
+            response.raise_for_status()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"todoist sync failed for task '{payload['content']}': {e}")
+            if response is not None:
+                print(f"response body: {response.text}")
+            all_successful = False
+            
+    return all_successful
 
 @app.post("/activity")
 async def handle_activity(payload: ActivityPayload, x_key: str = Header(None)):
@@ -480,6 +531,8 @@ def get_daily_sheet_data() -> list:
         day["school_hours"] = round(day["school_minutes"] / 60, 2)
         day["home_hours"] = round(day["home_minutes"] / 60, 2)
         day["work_hours"] = round(day["work_minutes"] / 60, 2)
+        away_minutes = 1440 - day["home_minutes"] - day["school_minutes"] - day["work_minutes"]
+        day["away_hours"] = round(away_minutes / 60, 2)
     
     return sheet
 
@@ -526,4 +579,37 @@ def serve_progress_photo(filename: str, x_key: str = Header(None)):
     file_path = os.path.join(PROGRESS_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Photo not found")
+    return FileResponse(file_path)
+
+@app.get("/data/journals")
+def get_journals(x_key: str = Header(None)):
+    verify_key(x_key)
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM events WHERE event_name = 'evening_routine' ORDER BY start_time DESC")
+    rows = c.fetchall()
+    conn.close()
+
+    journals = []
+    for row in rows:
+        entry = dict(row)
+        if entry.get("start_time"):
+            entry["start_time"] = convert_to_denver(entry["start_time"])
+        if entry.get("end_time"):
+            entry["end_time"] = convert_to_denver(entry["end_time"])
+        if entry.get("metadata"):
+            try:
+                entry["metadata"] = json.loads(entry["metadata"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+        journals.append(entry)
+    return journals
+
+@app.get("/data/media/audio/journal/{filename}")
+def serve_journal_audio(filename: str, x_key: str = Header(None)):
+    verify_key(x_key)
+    from fastapi.responses import FileResponse
+    file_path = os.path.join(JOURNAL_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(file_path)

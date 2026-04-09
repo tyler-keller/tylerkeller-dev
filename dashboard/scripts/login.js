@@ -35,6 +35,7 @@ async function verifyAndLoad(key) {
             document.getElementById('dashboard-content').style.display = 'block';
             loadStatus();
             loadSheet();
+            loadJournals();
             initProgressViewer();
         } else {
             input.value = '';
@@ -141,6 +142,7 @@ function populateSheet(rows) {
             <td>${row.school_hours}</td>
             <td>${row.home_hours}</td>
             <td>${row.work_hours}</td>
+            <td>${row.away_hours}</td>
         `;
         tbody.appendChild(tr);
     });

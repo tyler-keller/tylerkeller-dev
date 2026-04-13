@@ -1,16 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  macOS launchd plist for aw_sync.py
+  macOS launchd agent for aw_sync.py
 
-  Setup:
-    1. Fill in AW_SYNC_KEY and the ExecStart path below.
-    2. cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
-    3. launchctl load ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
+  SETUP
+  1. Find your Python that has `requests` installed:
+       which python3        (Homebrew: /opt/homebrew/bin/python3)
+       python3 -c "import requests; print('ok')"
 
-  Check status:  launchctl list dev.tylerkeller.aw-sync
-  Tail logs:     tail -f /tmp/aw-sync.log
-  Unload:        launchctl unload ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
+  2. Edit the two REPLACE_ME values below (python path + script path).
+
+  3. Copy to LaunchAgents and bootstrap:
+       cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
+
+  USEFUL COMMANDS
+  Status:   launchctl print gui/$(id -u)/dev.tylerkeller.aw-sync
+  Logs:     tail -f /tmp/aw-sync.log
+  Stop:     launchctl bootout gui/$(id -u)/dev.tylerkeller.aw-sync
+  Restart:  launchctl kickstart -k gui/$(id -u)/dev.tylerkeller.aw-sync
 -->
 <plist version="1.0">
 <dict>
@@ -19,9 +27,8 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <!-- absolute path to this script -->
-        <string>/path/to/api/scripts/aw_sync.py</string>
+        <string>REPLACE_ME_python3_path</string>
+        <string>REPLACE_ME_absolute_path_to_aw_sync.py</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -30,15 +37,10 @@
         <string>REPLACE_WITH_YOUR_API_KEY</string>
         <key>AW_SYNC_URL</key>
         <string>https://api.tylerkeller.dev</string>
-        <!-- optional overrides:
         <key>AW_SYNC_MACHINE</key>
-        <string>macbook</string>
-        <key>AW_SYNC_INTERVAL</key>
-        <string>300</string>
-        -->
+        <string>personal-macbook</string>
     </dict>
 
-    <!-- start on login and keep alive if it exits -->
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

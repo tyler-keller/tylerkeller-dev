@@ -27,9 +27,13 @@ STARTUP — macOS (launchd)
 
   1. Copy the template plist from this directory:
        cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
-  2. Edit it to set your AW_SYNC_KEY and paths.
-  3. Load it:
-       launchctl load ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
+  2. Edit the two REPLACE_ME fields (python path + script path) and set AW_SYNC_KEY.
+  3. Bootstrap it (launchctl load is deprecated and broken on modern macOS):
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
+  4. Verify:
+       launchctl print gui/$(id -u)/dev.tylerkeller.aw-sync
+  5. To stop/remove:
+       launchctl bootout gui/$(id -u)/dev.tylerkeller.aw-sync
 
 ────────────────────────────────────────────────────────────────────────────
 STARTUP — Linux (systemd user service)

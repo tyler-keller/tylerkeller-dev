@@ -46,7 +46,7 @@ function createJournalEntry(entry) {
         : '';
 
     const meta = entry.metadata || {};
-    const hasMeta = meta.summary || meta.transcription || (meta.tags && meta.tags.length > 0);
+    const hasMeta = meta.summary || meta.transcription || (meta.tags && meta.tags.length > 0) || (meta.tasks_extracted && meta.tasks_extracted.length > 0);
 
     const header = document.createElement('div');
     header.className = 'journal-header';
@@ -70,6 +70,17 @@ function createJournalEntry(entry) {
 
     if (meta.transcription) {
         bodyHtml += `<div class="journal-transcription">${meta.transcription}</div>`;
+    }
+
+    if (meta.tasks_extracted && meta.tasks_extracted.length > 0) {
+        const taskItems = meta.tasks_extracted.map(t => {
+            const detail = [t.due_string, t.description].filter(Boolean).join(' · ');
+            return `<li class="journal-task-item">${t.content}${detail ? `<span class="journal-task-detail">${detail}</span>` : ''}</li>`;
+        }).join('');
+        bodyHtml += `<ul class="journal-tasks">${taskItems}</ul>`;
+        if (meta.all_tasks_created === false) {
+            bodyHtml += `<div class="journal-tasks-warning">⚠ not all tasks sent to Todoist</div>`;
+        }
     }
 
     if (!hasMeta && !entry.media_path) {

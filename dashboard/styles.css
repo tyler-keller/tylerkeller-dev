@@ -127,11 +127,64 @@ a, a:visited { color: var(--link-color) !important; }
 }
 
 .check {
-    color: #4caf50;
+    background: rgba(76, 175, 80, 0.35);
 }
 
 .miss {
     color: #666;
+}
+
+.sheet-bar-row td {
+    padding: 0 !important;
+    border-top: none !important;
+}
+
+.sheet-bar-cell {
+    padding: 0 !important;
+}
+
+.sheet-timeline-bar {
+    position: relative;
+    height: 14px;
+    background: rgba(128, 128, 128, 0.08);
+    width: 100%;
+    overflow: hidden;
+}
+
+.sheet-bar-segment {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    opacity: 0.75;
+}
+
+.sheet-bar-tick {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 1px;
+    background: rgba(128, 128, 128, 0.25);
+}
+
+.sheet-bar-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    font-size: 0.8em;
+}
+
+.sheet-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sheet-legend-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    opacity: 0.75;
 }
 
 .progress-controls {
@@ -271,6 +324,30 @@ a, a:visited { color: var(--link-color) !important; }
 .journal-no-meta {
     color: #666;
     font-style: italic;
+}
+
+.journal-tasks {
+    list-style: none;
+    margin: 8px 0;
+    padding: 0;
+}
+
+.journal-task-item {
+    border-left: 2px solid var(--text-color);
+    padding: 2px 0 2px 8px;
+    margin: 4px 0;
+}
+
+.journal-task-detail {
+    color: #888;
+    font-size: 0.85em;
+    margin-left: 6px;
+}
+
+.journal-tasks-warning {
+    color: #ff6b6b;
+    font-size: 0.85em;
+    margin: 4px 0;
 }
 
 .heatmap-controls {
@@ -425,6 +502,37 @@ a, a:visited { color: var(--link-color) !important; }
     border: 1px solid var(--text-color);
 }
 
+.stock-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.stock-stats-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.stock-stats-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+}
+
+.stock-streak {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.stock-streak-dates {
+    color: #666;
+    font-size: 0.75em;
+}
+
 .stock-score {
     font-size: 1.8em;
     font-weight: bold;
@@ -460,4 +568,19 @@ a, a:visited { color: var(--link-color) !important; }
 
 .stock-chart {
     overflow-x: auto;
+}
+
+.progress-weight-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.right-column {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }

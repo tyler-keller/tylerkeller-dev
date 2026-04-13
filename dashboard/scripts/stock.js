@@ -1,5 +1,6 @@
 let stockSheetData = null;
 let stockSeries = [];
+let stockStreaks = { bestHit: null, worstDrop: null };
 
 async function loadStock() {
     try {
@@ -23,15 +24,19 @@ function computeStockSeries() {
 
     const sorted = [...stockSheetData].sort((a, b) => a.date.localeCompare(b.date));
     stockSeries = [];
-    let score = 100;
+    let score = 0;
 
     for (let i = 0; i < sorted.length; i++) {
         const day = sorted[i];
+        // if (day.date < '2026-04-01') {
+        //     continue;
+        // }
         // const hit = day.morning_routine && day.evening_routine && (day.lift || day.muay_thai || day.run);
         const hit = day.morning_routine && day.evening_routine 
 
         if (i === 0) {
-            score = hit ? 100 : 80;
+            // score = hit ? 100 : 95;
+            score = hit ? 1000 : 950;
         } else if (hit) {
             const additionalMult = (day.lift || day.muay_thai || day.run) ? 0.02 : 0;
             const randomMult = 1.005 + Math.random() * 0.01 + additionalMult;
@@ -46,6 +51,43 @@ function computeStockSeries() {
             hit: hit
         });
     }
+
+    computeStreaks();
+}
+
+function computeStreaks() {
+    let bestHit = { length: 0, start: '', end: '' };
+    let worstDrop = { length: 0, start: '', end: '' };
+
+    let hitRun = 0, hitStart = '';
+    let dropRun = 0, dropStart = '';
+
+    for (let i = 0; i < stockSeries.length; i++) {
+        if (stockSeries[i].hit) {
+            if (hitRun === 0) hitStart = stockSeries[i].date;
+            hitRun++;
+            if (dropRun > worstDrop.length) {
+                worstDrop = { length: dropRun, start: dropStart, end: stockSeries[i - 1].date };
+            }
+            dropRun = 0;
+        } else {
+            if (dropRun === 0) dropStart = stockSeries[i].date;
+            dropRun++;
+            if (hitRun > bestHit.length) {
+                bestHit = { length: hitRun, start: hitStart, end: stockSeries[i - 1].date };
+            }
+            hitRun = 0;
+        }
+    }
+
+    if (hitRun > bestHit.length) {
+        bestHit = { length: hitRun, start: hitStart, end: stockSeries[stockSeries.length - 1].date };
+    }
+    if (dropRun > worstDrop.length) {
+        worstDrop = { length: dropRun, start: dropStart, end: stockSeries[stockSeries.length - 1].date };
+    }
+
+    stockStreaks = { bestHit, worstDrop };
 }
 
 function renderStock() {
@@ -71,7 +113,7 @@ function renderStockStats() {
         { label: 'all time', days: 99999 }
     ];
 
-    const html = periods.map(p => {
+    const statsHtml = periods.map(p => {
         const idx = Math.max(0, stockSeries.length - 1 - p.days);
         const prev = stockSeries[idx].score;
         const pct = ((current - prev) / prev * 100);
@@ -80,9 +122,26 @@ function renderStockStats() {
         return `<div class="stock-stat"><span class="stock-stat-label">${p.label}</span><span class="${cls}">${sign}${pct.toFixed(1)}%</span></div>`;
     }).join('');
 
+    const { bestHit, worstDrop } = stockStreaks;
+    const streaksHtml = `
+        <div class="stock-streak">
+            <span class="stock-stat-label">best streak</span>
+            <span class="stock-up">${bestHit.length}d</span>
+            <span class="stock-streak-dates">${bestHit.start} to ${bestHit.end}</span>
+        </div>
+        <div class="stock-streak">
+            <span class="stock-stat-label">worst drop</span>
+            <span class="stock-down">${worstDrop.length}d</span>
+            <span class="stock-streak-dates">${worstDrop.start} to ${worstDrop.end}</span>
+        </div>
+    `;
+
     container.innerHTML = `
-        <div class="stock-score">${current.toFixed(1)}</div>
-        <div class="stock-stats-row">${html}</div>
+        <div class="stock-stats-left">
+            <div class="stock-score">${current.toFixed(1)}</div>
+            <div class="stock-stats-row">${statsHtml}</div>
+        </div>
+        <div class="stock-stats-right">${streaksHtml}</div>
     `;
 }
 

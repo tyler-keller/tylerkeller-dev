@@ -485,18 +485,37 @@ def get_daily_sheet_data() -> list:
                 "run": False,
                 "school_minutes": 0,
                 "home_minutes": 0,
-                "work_minutes": 0
+                "work_minutes": 0,
+                "weight": None,
+                "segments": []
             }
-        
+
         event_name = event["event_name"]
         if event_name == "morning_routine":
             days[day_key]["morning_routine"] = True
+            if event.get("metadata"):
+                try:
+                    meta = json.loads(event["metadata"])
+                    if meta.get("weight"):
+                        days[day_key]["weight"] = float(meta["weight"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
         elif event_name == "evening_routine":
             days[day_key]["evening_routine"] = True
         elif event_name == "lift":
             days[day_key]["lift"] = True
         elif event_name == "muay_thai":
             days[day_key]["muay_thai"] = True
+            if event.get("end_time"):
+                end_dt = datetime.fromisoformat(event["end_time"])
+                if end_dt.tzinfo is None:
+                    end_dt = end_dt.replace(tzinfo=UTC_TZ)
+                denver_end = end_dt.astimezone(DENVER_TZ)
+                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
+                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
+                if end_min - start_min >= 5:
+                    days[day_key]["segments"].append({"name": "muay_thai", "start": start_min, "end": end_min})
         elif event_name == "run":
             days[day_key]["run"] = True
         elif event_name == "school":
@@ -507,6 +526,11 @@ def get_daily_sheet_data() -> list:
                 denver_end = end_dt.astimezone(DENVER_TZ)
                 delta = denver_end - denver_dt
                 days[day_key]["school_minutes"] += int(delta.total_seconds() / 60)
+                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
+                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
+                if end_min - start_min >= 5:
+                    days[day_key]["segments"].append({"name": "school", "start": start_min, "end": end_min})
         elif event_name == "home":
             if event.get("end_time"):
                 end_dt = datetime.fromisoformat(event["end_time"])
@@ -515,6 +539,11 @@ def get_daily_sheet_data() -> list:
                 denver_end = end_dt.astimezone(DENVER_TZ)
                 delta = denver_end - denver_dt
                 days[day_key]["home_minutes"] += int(delta.total_seconds() / 60)
+                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
+                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
+                if end_min - start_min >= 5:
+                    days[day_key]["segments"].append({"name": "home", "start": start_min, "end": end_min})
         elif event_name == "work":
             if event.get("end_time"):
                 end_dt = datetime.fromisoformat(event["end_time"])
@@ -523,6 +552,11 @@ def get_daily_sheet_data() -> list:
                 denver_end = end_dt.astimezone(DENVER_TZ)
                 delta = denver_end - denver_dt
                 days[day_key]["work_minutes"] += int(delta.total_seconds() / 60)
+                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
+                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
+                if end_min - start_min >= 5:
+                    days[day_key]["segments"].append({"name": "work", "start": start_min, "end": end_min})
     
     sheet = list(days.values())
     sheet.sort(key=lambda d: d["date"], reverse=True)
@@ -531,8 +565,8 @@ def get_daily_sheet_data() -> list:
         day["school_hours"] = round(day["school_minutes"] / 60, 2)
         day["home_hours"] = round(day["home_minutes"] / 60, 2)
         day["work_hours"] = round(day["work_minutes"] / 60, 2)
-        # away_minutes = 1440 - day["home_minutes"] - day["school_minutes"] - day["work_minutes"]
-        # day["away_hours"] = round(away_minutes / 60, 2)
+        untracked_minutes = max(0, 1440 - day["home_minutes"] - day["school_minutes"] - day["work_minutes"])
+        day["untracked_hours"] = round(untracked_minutes / 60, 2)
     
     return sheet
 
@@ -613,3 +647,29 @@ def serve_journal_audio(filename: str, x_key: str = Header(None)):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(file_path)
+
+@app.get("/data/weights")
+def get_weights(x_key: str = Header(None)):
+    verify_key(x_key)
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT start_time, metadata FROM events WHERE event_name = 'morning_routine' ORDER BY start_time")
+    rows = c.fetchall()
+    conn.close()
+
+    weights = []
+    for row in rows:
+        if not row["metadata"]:
+            continue
+        try:
+            meta = json.loads(row["metadata"])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        weight = meta.get("weight")
+        if not weight:
+            continue
+        date_str = convert_to_denver(row["start_time"])
+        date_only = date_str[:10] if date_str else None
+        if date_only:
+            weights.append({"date": date_only, "weight": float(weight)})
+    return weights

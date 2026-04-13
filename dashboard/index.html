@@ -37,75 +37,86 @@
             <div id="timeline-legend" class="timeline-legend"></div>
         </div>
 
-        <br>
-        radar:
-        <br><br>
-        <div class="viz-container">
-            <div class="radar-controls">
-                <button class="radar-mode-btn" data-mode="daily">daily</button>
-                <button class="radar-mode-btn active" data-mode="week">week</button>
-                <button class="radar-mode-btn" data-mode="month">month</button>
-                <button class="radar-mode-btn" data-mode="year">year</button>
-                <button class="radar-mode-btn" data-mode="all">all time</button>
-            </div>
-            <div id="radar-slider-wrap" class="radar-slider-wrap" style="display:none;">
-                <input type="range" id="radar-slider" min="0" max="0" value="0">
-                <span id="radar-slider-label" class="radar-slider-label"></span>
-            </div>
-            <div id="radar-chart" class="radar-chart"></div>
-        </div>
-
-        <br>
-        heatmap:
-        <br><br>
-        <div class="viz-container">
-            <div class="heatmap-controls">
-                <button id="heatmap-prev" class="heatmap-nav">&lt;</button>
-                <span id="heatmap-year"></span>
-                <button id="heatmap-next" class="heatmap-nav">&gt;</button>
-            </div>
-            <div id="heatmap-grid" class="heatmap-grid">
-                <div class="heatmap-loading">loading...</div>
-            </div>
-            <div class="heatmap-legend">
-                <span>less</span>
-                <div class="heatmap-legend-cell" style="opacity:0"></div>
-                <div class="heatmap-legend-cell" style="opacity:0.25"></div>
-                <div class="heatmap-legend-cell" style="opacity:0.5"></div>
-                <div class="heatmap-legend-cell" style="opacity:0.75"></div>
-                <div class="heatmap-legend-cell" style="opacity:1"></div>
-                <span>more</span>
-            </div>
-        </div>
-
         <br><br>
         progress viewer:
         <br><br>
-        <div class="progress-viewer" id="progress-viewer" style="display:none;">
-            <div class="progress-controls">
-                <label>
-                    <input type="checkbox" id="show-progress-toggle"> SHOW?
-                </label>
-                <label>
-                    speed:
-                    <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="2">
-                    <span id="speed-value">2s</span>
-                </label>
-                <label>
-                    range:
-                    <select id="range-select">
-                        <option value="this_month">this month</option>
-                        <option value="this_year">this year</option>
-                        <option value="all_time" selected>all time</option>
-                    </select>
-                </label>
-                <button id="reset-btn">reset</button>
+        <div class="progress-weight-row">
+            <div class="progress-viewer" id="progress-viewer" style="display:none;">
+                <div class="progress-controls">
+                    <label>
+                        <input type="checkbox" id="show-progress-toggle"> SHOW?
+                    </label>
+                    <label>
+                        speed:
+                        <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="2">
+                        <span id="speed-value">2s</span>
+                    </label>
+                    <label>
+                        range:
+                        <select id="range-select">
+                            <option value="this_month">this month</option>
+                            <option value="this_year">this year</option>
+                            <option value="all_time" selected>all time</option>
+                        </select>
+                    </label>
+                    <button id="reset-btn">reset</button>
+                </div>
+                <div class="progress-display" id="progress-display">
+                    <div class="progress-placeholder">click SHOW? to start</div>
+                    <div class="progress-image-container" id="progress-image-container" style="display:none;">
+                        <img id="progress-image" src="" alt="progress">
+                        <div class="progress-date-overlay" id="progress-date-overlay"></div>
+                    </div>
+                </div>
             </div>
-            <div class="progress-display" id="progress-display">
-                <div class="progress-placeholder">click SHOW? to start</div>
-                <div class="progress-image-container" id="progress-image-container" style="display:none;">
-                    <img id="progress-image" src="" alt="progress">
-                    <div class="progress-date-overlay" id="progress-date-overlay"></div>
+            <div class="right-column">
+                <div>
+                    weight:
+                    <br><br>
+                    <div class="viz-container">
+                        <div id="weight-chart"></div>
+                    </div>
+                </div>
+                <div>
+                    radar:
+                    <br><br>
+                    <div class="viz-container">
+                        <div class="radar-controls">
+                            <button class="radar-mode-btn" data-mode="daily">daily</button>
+                            <button class="radar-mode-btn active" data-mode="week">week</button>
+                            <button class="radar-mode-btn" data-mode="month">month</button>
+                            <button class="radar-mode-btn" data-mode="year">year</button>
+                            <button class="radar-mode-btn" data-mode="all">all time</button>
+                        </div>
+                        <div id="radar-slider-wrap" class="radar-slider-wrap" style="display:none;">
+                            <input type="range" id="radar-slider" min="0" max="0" value="0">
+                            <span id="radar-slider-label" class="radar-slider-label"></span>
+                        </div>
+                        <div id="radar-chart" class="radar-chart"></div>
+                    </div>
+                </div>
+                <div>
+                    heatmap:
+                    <br><br>
+                    <div class="viz-container">
+                        <div class="heatmap-controls">
+                            <button id="heatmap-prev" class="heatmap-nav">&lt;</button>
+                            <span id="heatmap-year"></span>
+                            <button id="heatmap-next" class="heatmap-nav">&gt;</button>
+                        </div>
+                        <div id="heatmap-grid" class="heatmap-grid">
+                            <div class="heatmap-loading">loading...</div>
+                        </div>
+                        <div class="heatmap-legend">
+                            <span>less</span>
+                            <div class="heatmap-legend-cell" style="opacity:0"></div>
+                            <div class="heatmap-legend-cell" style="opacity:0.25"></div>
+                            <div class="heatmap-legend-cell" style="opacity:0.5"></div>
+                            <div class="heatmap-legend-cell" style="opacity:0.75"></div>
+                            <div class="heatmap-legend-cell" style="opacity:1"></div>
+                            <span>more</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -118,6 +129,37 @@
             <div id="journals-list" style="display:none;"></div>
         </div>
 
+        <br><br>
+        data sheet:
+        <br><br>
+        <div class="sheet-bar-legend">
+            <span class="sheet-legend-item"><span class="sheet-legend-swatch" style="background:#4a9eff"></span>home</span>
+            <span class="sheet-legend-item"><span class="sheet-legend-swatch" style="background:#ffd43b"></span>school</span>
+            <span class="sheet-legend-item"><span class="sheet-legend-swatch" style="background:#b197fc"></span>work</span>
+            <span class="sheet-legend-item"><span class="sheet-legend-swatch" style="background:#ff6b6b"></span>muay thai</span>
+        </div>
+        <div class="sheet-container" style="overflow-x: auto;">
+            <table id="data-sheet" class="data-sheet">
+                <thead>
+                    <tr>
+                        <th>date</th>
+                        <th>morning</th>
+                        <th>evening</th>
+                        <th>lift</th>
+                        <th>muay thai</th>
+                        <th>run</th>
+                        <th>school (h)</th>
+                        <th>home (h)</th>
+                        <th>work (h)</th>
+                        <th>untracked (h)</th>
+                        <th>weight (lbs)</th>
+                    </tr>
+                </thead>
+                <tbody id="sheet-body">
+                </tbody>
+            </table>
+        </div>
+
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
         <script src="scripts/timeline.js"></script>
         <script src="scripts/heatmap.js"></script>
@@ -127,6 +169,7 @@
         <script src="scripts/journals.js"></script>
         <script src="scripts/data_sheet.js"></script>
         <script src="scripts/progress.js"></script>
+        <script src="scripts/weight.js"></script>
 
         </div>
     <script>

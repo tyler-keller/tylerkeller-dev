@@ -21,6 +21,12 @@
         dashboard.
         <br><br>
 
+        <div class="viz-container stock-container">
+            <div id="stock-stats" class="stock-stats"></div>
+            <div id="stock-chart" class="stock-chart"></div>
+        </div>
+
+        <br>
         time:
         <br><br>
         <div class="viz-container">
@@ -29,6 +35,24 @@
             <div id="timeline-month" class="timeline-chart"></div>
             <div id="timeline-year" class="timeline-chart"></div>
             <div id="timeline-legend" class="timeline-legend"></div>
+        </div>
+
+        <br>
+        radar:
+        <br><br>
+        <div class="viz-container">
+            <div class="radar-controls">
+                <button class="radar-mode-btn" data-mode="daily">daily</button>
+                <button class="radar-mode-btn active" data-mode="week">week</button>
+                <button class="radar-mode-btn" data-mode="month">month</button>
+                <button class="radar-mode-btn" data-mode="year">year</button>
+                <button class="radar-mode-btn" data-mode="all">all time</button>
+            </div>
+            <div id="radar-slider-wrap" class="radar-slider-wrap" style="display:none;">
+                <input type="range" id="radar-slider" min="0" max="0" value="0">
+                <span id="radar-slider-label" class="radar-slider-label"></span>
+            </div>
+            <div id="radar-chart" class="radar-chart"></div>
         </div>
 
         <br>
@@ -97,6 +121,8 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
         <script src="scripts/timeline.js"></script>
         <script src="scripts/heatmap.js"></script>
+        <script src="scripts/radar.js"></script>
+        <script src="scripts/stock.js"></script>
         <script src="scripts/login.js"></script>
         <script src="scripts/journals.js"></script>
         <script src="scripts/data_sheet.js"></script>

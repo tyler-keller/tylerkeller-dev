@@ -1,7 +1,7 @@
 let progressPhotos = [];
 let progressIndex = 0;
 let progressTimer = null;
-let progressSpeed = 2;
+let progressSpeed = 0.5;
 
 function initProgressViewer() {
     const viewer = document.getElementById('progress-viewer');
@@ -23,7 +23,7 @@ function initProgressViewer() {
 
     slider.addEventListener('input', () => {
         progressSpeed = parseFloat(slider.value);
-        speedVal.textContent = `${progressSpeed}s`;
+        speedVal.textContent = `${progressSpeed.toFixed(2)}s`;
         if (toggle.checked) {
             stopProgressSlideshow();
             startProgressSlideshow();

@@ -38,7 +38,6 @@ async function verifyAndLoad(key) {
             loadJournals();
             loadStock();
             loadHeatmap();
-            loadTimeline();
             loadRadar();
             initProgressViewer();
             loadWeightChart();

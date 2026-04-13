@@ -131,7 +131,7 @@ function renderRadar() {
     const range = getDateRange();
     const scores = computeRadarScores(range);
 
-    const size = 280;
+    const size = 440;
     const cx = size / 2;
     const cy = size / 2;
     const maxR = 110;

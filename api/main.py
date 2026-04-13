@@ -71,6 +71,16 @@ class ActivityPayload(BaseModel):
     source: str
     duration_seconds: int
 
+class AWEventItem(BaseModel):
+    timestamp: str
+    duration: float
+    data: dict
+
+class AWBatchPayload(BaseModel):
+    machine: str
+    bucket: str
+    events: list[AWEventItem]
+
 class ToggleState(BaseModel):
     status: str
     last_change_at: str
@@ -111,15 +121,28 @@ def save_state(event_name: str, state: ToggleState):
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS events 
+    c.execute("PRAGMA journal_mode=WAL")
+    c.execute('''CREATE TABLE IF NOT EXISTS events
                 (id INTEGER PRIMARY KEY, event_name TEXT, start_time TEXT, end_time TEXT, media_path TEXT, metadata TEXT)''')
-    
+
     # safely attempt to add the column if it doesn't exist in an older database
     try:
         c.execute("ALTER TABLE events ADD COLUMN metadata TEXT")
     except sqlite3.OperationalError:
         pass
-        
+
+    c.execute('''CREATE TABLE IF NOT EXISTS aw_events (
+                id        INTEGER PRIMARY KEY,
+                machine   TEXT    NOT NULL,
+                bucket    TEXT    NOT NULL,
+                timestamp TEXT    NOT NULL,
+                duration  REAL    NOT NULL,
+                data      TEXT    NOT NULL,
+                UNIQUE(machine, bucket, timestamp)
+            )''')
+    c.execute("CREATE INDEX IF NOT EXISTS idx_aw_machine_bucket ON aw_events (machine, bucket)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_aw_timestamp ON aw_events (timestamp)")
+
     conn.commit()
     conn.close()
 
@@ -361,6 +384,22 @@ async def handle_activity(payload: ActivityPayload, x_key: str = Header(None)):
     insert_event(f"activity_{payload.source}", now_utc().isoformat())
     return {"status": "ok"}
 
+@app.post("/activity/sync")
+async def sync_activity(payload: AWBatchPayload, x_key: str = Header(None)):
+    verify_key(x_key)
+    conn = get_db_connection()
+    c = conn.cursor()
+    inserted = 0
+    for ev in payload.events:
+        c.execute(
+            "INSERT OR IGNORE INTO aw_events (machine, bucket, timestamp, duration, data) VALUES (?, ?, ?, ?, ?)",
+            (payload.machine, payload.bucket, ev.timestamp, ev.duration, json.dumps(ev.data))
+        )
+        inserted += c.rowcount
+    conn.commit()
+    conn.close()
+    return {"inserted": inserted, "received": len(payload.events)}
+
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
@@ -459,13 +498,48 @@ def get_status(x_key: str = Header(None)):
         "this_week_events": [convert_event_times(e) for e in this_week_events]
     }
 
+def _ensure_day(days: dict, day_key: str):
+    if day_key not in days:
+        days[day_key] = {
+            "date": day_key,
+            "morning_routine": False,
+            "evening_routine": False,
+            "lift": False,
+            "muay_thai": False,
+            "run": False,
+            "school_minutes": 0,
+            "home_minutes": 0,
+            "work_minutes": 0,
+            "weight": None,
+            "segments": []
+        }
+
+def _add_timed_segments(days: dict, event_name: str, denver_start, denver_end, minute_key: str | None = None):
+    """Split a timed event across all calendar days it spans and add segments + minutes to each."""
+    current_date = denver_start.date()
+    end_date = denver_end.date()
+    while current_date <= end_date:
+        dk = current_date.isoformat()
+        _ensure_day(days, dk)
+        midnight = datetime.combine(current_date, datetime.min.time()).replace(tzinfo=DENVER_TZ)
+        next_midnight = midnight + timedelta(days=1)
+        seg_start = max(denver_start, midnight)
+        seg_end = min(denver_end, next_midnight)
+        start_min = int((seg_start - midnight).total_seconds() / 60)
+        end_min = int((seg_end - midnight).total_seconds() / 60)
+        if minute_key:
+            days[dk][minute_key] += end_min - start_min
+        if end_min - start_min >= 5:
+            days[dk]["segments"].append({"name": event_name, "start": start_min, "end": end_min})
+        current_date += timedelta(days=1)
+
 def get_daily_sheet_data() -> list:
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT * FROM events ORDER BY start_time ASC")
     rows = c.fetchall()
     conn.close()
-    
+
     days = {}
     for row in rows:
         event = dict(row)
@@ -474,21 +548,7 @@ def get_daily_sheet_data() -> list:
             start_dt = start_dt.replace(tzinfo=UTC_TZ)
         denver_dt = start_dt.astimezone(DENVER_TZ)
         day_key = denver_dt.date().isoformat()
-        
-        if day_key not in days:
-            days[day_key] = {
-                "date": day_key,
-                "morning_routine": False,
-                "evening_routine": False,
-                "lift": False,
-                "muay_thai": False,
-                "run": False,
-                "school_minutes": 0,
-                "home_minutes": 0,
-                "work_minutes": 0,
-                "weight": None,
-                "segments": []
-            }
+        _ensure_day(days, day_key)
 
         event_name = event["event_name"]
         if event_name == "morning_routine":
@@ -511,11 +571,7 @@ def get_daily_sheet_data() -> list:
                 if end_dt.tzinfo is None:
                     end_dt = end_dt.replace(tzinfo=UTC_TZ)
                 denver_end = end_dt.astimezone(DENVER_TZ)
-                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
-                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
-                if end_min - start_min >= 5:
-                    days[day_key]["segments"].append({"name": "muay_thai", "start": start_min, "end": end_min})
+                _add_timed_segments(days, "muay_thai", denver_dt, denver_end)
         elif event_name == "run":
             days[day_key]["run"] = True
         elif event_name == "school":
@@ -524,39 +580,21 @@ def get_daily_sheet_data() -> list:
                 if end_dt.tzinfo is None:
                     end_dt = end_dt.replace(tzinfo=UTC_TZ)
                 denver_end = end_dt.astimezone(DENVER_TZ)
-                delta = denver_end - denver_dt
-                days[day_key]["school_minutes"] += int(delta.total_seconds() / 60)
-                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
-                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
-                if end_min - start_min >= 5:
-                    days[day_key]["segments"].append({"name": "school", "start": start_min, "end": end_min})
+                _add_timed_segments(days, "school", denver_dt, denver_end, "school_minutes")
         elif event_name == "home":
             if event.get("end_time"):
                 end_dt = datetime.fromisoformat(event["end_time"])
                 if end_dt.tzinfo is None:
                     end_dt = end_dt.replace(tzinfo=UTC_TZ)
                 denver_end = end_dt.astimezone(DENVER_TZ)
-                delta = denver_end - denver_dt
-                days[day_key]["home_minutes"] += int(delta.total_seconds() / 60)
-                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
-                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
-                if end_min - start_min >= 5:
-                    days[day_key]["segments"].append({"name": "home", "start": start_min, "end": end_min})
+                _add_timed_segments(days, "home", denver_dt, denver_end, "home_minutes")
         elif event_name == "work":
             if event.get("end_time"):
                 end_dt = datetime.fromisoformat(event["end_time"])
                 if end_dt.tzinfo is None:
                     end_dt = end_dt.replace(tzinfo=UTC_TZ)
                 denver_end = end_dt.astimezone(DENVER_TZ)
-                delta = denver_end - denver_dt
-                days[day_key]["work_minutes"] += int(delta.total_seconds() / 60)
-                midnight = denver_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-                start_min = max(0, int((denver_dt - midnight).total_seconds() / 60))
-                end_min = min(1440, int((denver_end - midnight).total_seconds() / 60))
-                if end_min - start_min >= 5:
-                    days[day_key]["segments"].append({"name": "work", "start": start_min, "end": end_min})
+                _add_timed_segments(days, "work", denver_dt, denver_end, "work_minutes")
     
     sheet = list(days.values())
     sheet.sort(key=lambda d: d["date"], reverse=True)

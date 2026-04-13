@@ -103,7 +103,9 @@ function renderStockChart() {
     const downColor = '#ff6b6b';
 
     const padding = { top: 10, right: 16, bottom: 24, left: 50 };
-    const chartWidth = 740;
+    const containerEl = document.getElementById('stock-chart');
+    const containerW = containerEl ? (containerEl.offsetWidth || 806) : 806;
+    const chartWidth = Math.max(200, containerW - padding.left - padding.right);
     const chartHeight = 140;
     const svgWidth = chartWidth + padding.left + padding.right;
     const svgHeight = chartHeight + padding.top + padding.bottom;

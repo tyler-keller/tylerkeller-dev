@@ -201,20 +201,13 @@ function renderHeatmap() {
         document.body.appendChild(tooltip);
     }
 
-    svg.addEventListener('mousemove', (e) => {
-        const target = e.target;
-        if (target.tagName !== 'rect' || !target.dataset.date) {
-            tooltip.style.display = 'none';
-            return;
-        }
-        const dateStr = target.dataset.date;
+    function buildTooltipHtml(dateStr) {
         const info = dayData[dateStr];
         const [y, m, d] = dateStr.split('-');
         const dateObj = new Date(+y, +m - 1, +d);
         const prettyDate = dateObj.toLocaleDateString('en-US', {
             weekday: 'short', month: 'short', day: 'numeric'
         });
-
         let html = `<div class="heatmap-tooltip-date">${prettyDate}</div>`;
         if (info && info.score > 0) {
             html += `<div class="heatmap-tooltip-score">${info.done.length}/${TOTAL_ITEMS}</div>`;
@@ -225,20 +218,47 @@ function renderHeatmap() {
         } else {
             html += `<div class="heatmap-tooltip-miss">no data</div>`;
         }
+        return html;
+    }
 
-        tooltip.innerHTML = html;
+    function positionTooltip(pageX, pageY) {
         tooltip.style.display = 'block';
-
         const rect = tooltip.getBoundingClientRect();
-        let left = e.pageX + 12;
-        let top = e.pageY - rect.height / 2;
-        if (left + rect.width > window.innerWidth) left = e.pageX - rect.width - 12;
+        let left = pageX + 12;
+        let top = pageY - rect.height / 2;
+        if (left + rect.width > window.innerWidth) left = pageX - rect.width - 12;
         if (top < 0) top = 4;
         tooltip.style.left = left + 'px';
         tooltip.style.top = top + 'px';
+    }
+
+    svg.addEventListener('mousemove', (e) => {
+        const target = e.target;
+        if (target.tagName !== 'rect' || !target.dataset.date) {
+            tooltip.style.display = 'none';
+            return;
+        }
+        tooltip.innerHTML = buildTooltipHtml(target.dataset.date);
+        positionTooltip(e.pageX, e.pageY);
     });
 
     svg.addEventListener('mouseleave', () => {
         tooltip.style.display = 'none';
     });
+
+    // Touch support: tap a cell to see its tooltip, tap elsewhere to dismiss
+    let touchHideTimer;
+    svg.addEventListener('touchstart', (e) => {
+        const touch = e.changedTouches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!target || target.tagName !== 'rect' || !target.dataset.date) {
+            tooltip.style.display = 'none';
+            return;
+        }
+        e.preventDefault();
+        clearTimeout(touchHideTimer);
+        tooltip.innerHTML = buildTooltipHtml(target.dataset.date);
+        positionTooltip(touch.pageX, touch.pageY);
+        touchHideTimer = setTimeout(() => { tooltip.style.display = 'none'; }, 2500);
+    }, { passive: false });
 }

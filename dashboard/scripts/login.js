@@ -51,6 +51,19 @@ async function verifyAndLoad(key) {
     }
 }
 
+// Re-render SVG charts when viewport changes (orientation flip, resize)
+let _resizeTimer;
+window.addEventListener('resize', () => {
+    if (!apiKey) return;
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+        renderAllTimelines();
+        renderStock();
+        renderHeatmap();
+        renderRadar();
+    }, 200);
+});
+
 async function loadStatus() {
     try {
         const response = await fetch(`${API_URL}/status`, {

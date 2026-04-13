@@ -1,6 +1,7 @@
 :root {
     --bg-color: white;
     --text-color: black;
+    --link-color: rgb(107, 107, 255);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -460,4 +461,47 @@ a, a:visited { color: var(--link-color) !important; }
 
 .stock-chart {
     overflow-x: auto;
+}
+
+.status-bar {
+    font-size: 0.85em;
+    color: #888;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border-left: 2px solid #1eff00;
+}
+
+.status-bar span {
+    color: var(--link-color);
+    font-weight: bold;
+}
+
+@media (max-width: 640px) {
+    body { padding: 12px; }
+
+    .viz-container { padding: 10px; }
+
+    /* bigger tap targets */
+    .radar-mode-btn,
+    .heatmap-nav {
+        padding: 7px 14px;
+        min-height: 38px;
+        font-size: 0.9em;
+    }
+
+    .progress-controls button,
+    .progress-controls select {
+        padding: 7px 12px;
+        min-height: 38px;
+    }
+
+    .radar-controls { flex-wrap: wrap; gap: 4px; }
+
+    .stock-stats-row { gap: 12px; flex-wrap: wrap; }
+
+    .progress-display { max-width: 100%; }
+
+    .journal-header { padding: 10px 12px; min-height: 44px; }
+
+    .heatmap-legend { font-size: 0.75em; }
 }

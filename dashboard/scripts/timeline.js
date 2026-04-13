@@ -80,6 +80,12 @@ function buildTodayBreakdown() {
     return breakdown;
 }
 
+function getChartWidth(containerId, labelWidth) {
+    const el = document.getElementById(containerId);
+    const w = el ? el.offsetWidth : 0;
+    return w > 0 ? Math.max(240, w - labelWidth - 4) : 720;
+}
+
 function renderTodayTimeline() {
     const container = document.getElementById('timeline-today');
     if (!container) return;
@@ -92,9 +98,9 @@ function renderTodayTimeline() {
     const segments = ['home', 'school', 'work', 'muay_thai', 'run', 'lift'];
 
     const barHeight = 32;
-    const totalWidth = 720;
-    const hourWidth = totalWidth / 24;
     const labelWidth = 40;
+    const totalWidth = getChartWidth('timeline-today', labelWidth);
+    const hourWidth = totalWidth / 24;
     const svgWidth = labelWidth + totalWidth;
 
     const svg = createSvg(svgWidth, barHeight + 20);
@@ -233,9 +239,9 @@ function renderPeriodTimeline(containerId, days) {
     const order = ['school', 'work', 'muay_thai', 'run', 'lift', 'home', 'other'];
 
     const barHeight = 24;
-    const totalWidth = 720;
-    const hourWidth = totalWidth / 24;
     const labelWidth = 40;
+    const totalWidth = getChartWidth(containerId, labelWidth);
+    const hourWidth = totalWidth / 24;
     const svgWidth = labelWidth + totalWidth;
 
     const svg = createSvg(svgWidth, barHeight + 18);
@@ -282,7 +288,9 @@ function renderTimelineLegend() {
         { label: 'lift', color: COLORS.lift }
     ];
 
-    const svg = createSvg(600, 16);
+    const legendEl = document.getElementById('timeline-legend');
+    const svgW = legendEl ? Math.max(300, legendEl.offsetWidth) : 600;
+    const svg = createSvg(svgW, 16);
     let x = 0;
     for (const item of items) {
         const rect = createRect(x, 2, 10, 10, item.color, 2);

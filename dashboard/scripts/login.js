@@ -41,6 +41,7 @@ async function verifyAndLoad(key) {
             loadRadar();
             initProgressViewer();
             loadWeightChart();
+            renderLife();
         } else {
             input.value = '';
             input.placeholder = "whoops...";

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from zoneinfo import ZoneInfo
+from pydexcom import Dexcom
 from typing import Optional
 from groq import Groq
 import requests
@@ -20,6 +21,7 @@ IS_DEV = os.environ.get("APP-ENV") == "dev"
 SECRET_KEY = os.environ.get("SECRET-KEY")
 TODOIST_API_KEY = os.getenv("TODOIST_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+DEXCOM_PASSWORD = os.environ.get("DEXCOM_PASSWORD")
 
 DENVER_TZ = ZoneInfo("America/Denver")
 UTC_TZ = ZoneInfo("UTC")
@@ -47,6 +49,11 @@ LLM_MODEL = "openai/gpt-oss-120b"
 
 client = Groq(
     api_key=GROQ_API_KEY,
+)
+
+dexcom = Dexcom(
+    username="tylerkeller.dev@gmail.com", 
+    password=DEXCOM_PASSWORD
 )
 
 app = FastAPI()

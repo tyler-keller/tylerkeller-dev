@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -7,6 +8,7 @@ from zoneinfo import ZoneInfo
 from pydexcom import Dexcom
 from typing import Optional
 from groq import Groq
+import asyncio
 import requests
 import sqlite3
 import secrets
@@ -51,12 +53,58 @@ client = Groq(
     api_key=GROQ_API_KEY,
 )
 
-dexcom = Dexcom(
-    username="tylerkeller.dev@gmail.com", 
-    password=DEXCOM_PASSWORD
-)
+try:
+    dexcom = Dexcom(username="Tyckeller", password=DEXCOM_PASSWORD) if DEXCOM_PASSWORD else None
+except Exception as e:
+    print(f"Dexcom init failed: {e}")
+    dexcom = None
 
-app = FastAPI()
+def sync_glucose_readings(backfill: bool = False) -> int:
+    if not dexcom:
+        return 0
+    try:
+        if backfill:
+            readings = dexcom.get_glucose_readings(minutes=1440, max_count=288) or []
+        else:
+            current = dexcom.get_current_glucose_reading()
+            readings = [current] if current else []
+    except Exception as e:
+        print(f"Dexcom fetch failed: {e}")
+        return 0
+
+    if not readings:
+        return 0
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    inserted = 0
+    for r in readings:
+        try:
+            c.execute(
+                "INSERT OR IGNORE INTO cgm_readings (timestamp, mg_dl, trend_direction) VALUES (?, ?, ?)",
+                (r.datetime.isoformat(), r.mg_dl, r.trend_direction)
+            )
+            inserted += c.rowcount
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+    return inserted
+
+async def glucose_sync_loop():
+    inserted = await asyncio.to_thread(sync_glucose_readings, True)
+    print(f"Dexcom backfill: {inserted} readings inserted")
+    while True:
+        await asyncio.sleep(300)
+        await asyncio.to_thread(sync_glucose_readings, False)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(glucose_sync_loop())
+    yield
+    task.cancel()
+
+app = FastAPI(lifespan=lifespan)
 
 origins = [
     "https://dashboard.tylerkeller.dev", 
@@ -149,6 +197,14 @@ def init_db():
             )''')
     c.execute("CREATE INDEX IF NOT EXISTS idx_aw_machine_bucket ON aw_events (machine, bucket)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_aw_timestamp ON aw_events (timestamp)")
+
+    c.execute('''CREATE TABLE IF NOT EXISTS cgm_readings (
+                id        INTEGER PRIMARY KEY,
+                timestamp TEXT    NOT NULL UNIQUE,
+                mg_dl     INTEGER NOT NULL,
+                trend_direction TEXT NOT NULL
+            )''')
+    c.execute("CREATE INDEX IF NOT EXISTS idx_cgm_timestamp ON cgm_readings (timestamp)")
 
     conn.commit()
     conn.close()
@@ -692,6 +748,20 @@ def serve_journal_audio(filename: str, x_key: str = Header(None)):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(file_path)
+
+@app.get("/data/glucose")
+def get_glucose(x_key: str = Header(None)):
+    verify_key(x_key)
+    cutoff = (now_utc() - timedelta(hours=24)).isoformat()
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT timestamp, mg_dl, trend_direction FROM cgm_readings WHERE timestamp >= ? ORDER BY timestamp ASC",
+        (cutoff,)
+    )
+    rows = c.fetchall()
+    conn.close()
+    return [{"timestamp": r["timestamp"], "mg_dl": r["mg_dl"], "trend_direction": r["trend_direction"]} for r in rows]
 
 @app.get("/data/weights")
 def get_weights(x_key: str = Header(None)):

@@ -41,6 +41,7 @@ async function verifyAndLoad(key) {
             loadRadar();
             initProgressViewer();
             loadWeightChart();
+            loadGlucose();
             renderLife();
         } else {
             input.value = '';

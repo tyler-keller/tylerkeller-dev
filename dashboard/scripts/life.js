@@ -1,11 +1,21 @@
-const BIRTH_DATE = new Date(2003, 1, 17); // Feb 17, 2003
+const BIRTH_DATE = new Date(2003, 1, 17); 
 const LIFE_YEARS = 100;
 const WEEKS_PER_YEAR = 52;
 
 // Add notes here. year = age (0 = birth year, 23 = current age, etc.)
 // text will appear to the right of that year's row.
 const LIFE_NOTES = [
-    { year: 0,  text: 'born' },
+    { year: 0,  text: 'born in Del Rio, TX' },
+    { year: 1,  text: 'moved to Colorado' },
+    { year: 2,  text: 'moved to Hawaii' },
+    { year: 6,  text: 'moved to California' },
+    { year: 10,  text: 'moved to New Jersey' },
+    { year: 11,  text: 'diagnosed w/ T1D' },
+    { year: 12,  text: 'moved to Virginia' },
+    { year: 14,  text: 'moved to Germany' },
+    { year: 16,  text: 'moved back to Virginia' },
+    { year: 18,  text: 'graduated high school and moved to Colorado' },
+    { year: 22,  text: 'graduated college' },
 ];
 
 function renderLife() {

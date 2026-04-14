@@ -5,6 +5,7 @@
   <link rel="icon" href="assets/transparent_coder.png">
   <title>dshbrd</title>
   <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
 </head>
 <body>
     <div id="login-overlay">
@@ -26,6 +27,13 @@
             <div id="stock-chart" class="stock-chart"></div>
         </div>
 
+
+        <br><br>
+        glucose:
+        <br><br>
+        <div class="viz-container">
+            <div id="glucose-container">loading...</div>
+        </div>
 
         <br><br>
         progress viewer:
@@ -158,6 +166,7 @@
         </div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+        <script src="scripts/glucose.js"></script>
         <script src="scripts/heatmap.js"></script>
         <script src="scripts/radar.js"></script>
         <script src="scripts/stock.js"></script>

@@ -584,3 +584,26 @@ a, a:visited { color: var(--link-color) !important; }
     flex-direction: column;
     gap: 24px;
 }
+.glucose-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.glucose-value {
+    font-size: 2.2em;
+    font-weight: bold;
+    font-family: monospace;
+    line-height: 1;
+}
+
+.glucose-arrow {
+    font-size: 1.6em;
+    line-height: 1;
+}
+
+.glucose-meta {
+    font-size: 0.8em;
+    opacity: 0.5;
+}

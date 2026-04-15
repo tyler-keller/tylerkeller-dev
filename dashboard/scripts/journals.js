@@ -46,7 +46,8 @@ function createJournalEntry(entry) {
         : '';
 
     const meta = entry.metadata || {};
-    const hasMeta = meta.summary || meta.transcription || (meta.tags && meta.tags.length > 0) || (meta.tasks_extracted && meta.tasks_extracted.length > 0);
+    const hasScores = meta.stress != null || meta.mood != null || meta.energy != null;
+    const hasMeta = meta.summary || meta.transcription || (meta.tags && meta.tags.length > 0) || (meta.tasks_extracted && meta.tasks_extracted.length > 0) || hasScores;
 
     const header = document.createElement('div');
     header.className = 'journal-header';
@@ -59,6 +60,21 @@ function createJournalEntry(entry) {
     body.className = 'journal-body';
 
     let bodyHtml = '';
+
+    if (hasScores) {
+        const scoreItems = [
+            { label: 'stress', value: meta.stress },
+            { label: 'mood',   value: meta.mood   },
+            { label: 'energy', value: meta.energy  },
+        ].filter(s => s.value != null);
+        bodyHtml += `<div class="journal-scores">${scoreItems.map(s =>
+            `<span class="journal-score-item">
+                <span class="journal-score-label">${s.label}</span>
+                <span class="journal-score-bar"><span class="journal-score-fill" style="width:${s.value * 10}%"></span></span>
+                <span class="journal-score-val">${s.value}/10</span>
+            </span>`
+        ).join('')}</div>`;
+    }
 
     if (meta.tags && meta.tags.length > 0) {
         bodyHtml += `<div class="journal-tags">${meta.tags.map(t => `<span class="journal-tag">${t}</span>`).join('')}</div>`;

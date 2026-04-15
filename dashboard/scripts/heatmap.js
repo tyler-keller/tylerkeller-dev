@@ -124,13 +124,11 @@ function renderHeatmap() {
             rect.setAttribute('rx', 2);
             rect.setAttribute('data-date', dateStr);
 
-            if (info && info.hit) {
-                // green, brighter with each bonus
-                const opacity = 0.2 + (info.bonus_count / MAX_BONUSES) * 0.8;
+            if (info && info.has_data) {
+                // scale from near-zero (miss, 0 bonuses) up to full green (hit + all bonuses)
+                const total   = (info.hit ? 1 : 0) + info.bonus_count;
+                const opacity = 0.1 + (total / (1 + MAX_BONUSES)) * 0.9;
                 rect.setAttribute('fill', `rgba(30,255,0,${opacity.toFixed(2)})`);
-            } else if (info && info.has_data) {
-                // known miss: faint red
-                rect.setAttribute('fill', 'rgba(255,107,107,0.25)');
             } else {
                 rect.setAttribute('fill', emptyColor);
             }

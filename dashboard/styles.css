@@ -350,6 +350,46 @@ a, a:visited { color: var(--link-color) !important; }
     margin: 4px 0;
 }
 
+.journal-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.journal-score-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+}
+
+.journal-score-label {
+    width: 46px;
+    color: #888;
+}
+
+.journal-score-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(128,128,128,0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.journal-score-fill {
+    display: block;
+    height: 100%;
+    background: var(--link-color);
+    border-radius: 3px;
+}
+
+.journal-score-val {
+    width: 32px;
+    text-align: right;
+    color: #888;
+}
+
 .heatmap-controls {
     display: flex;
     align-items: center;

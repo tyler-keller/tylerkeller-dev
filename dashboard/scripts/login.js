@@ -43,6 +43,7 @@ async function verifyAndLoad(key) {
             loadWeightChart();
             loadGlucose();
             renderLife();
+            loadCorrelation();
         } else {
             input.value = '';
             input.placeholder = "whoops...";

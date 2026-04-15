@@ -3,15 +3,20 @@
 <!--
   macOS launchd agent for aw_sync.py
 
-  SETUP
-  1. Find your Python that has `requests` installed:
-       which python3        (Homebrew: /opt/homebrew/bin/python3)
-       python3 -c "import requests; print('ok')"
+  FIRST-TIME SETUP
+  1. Store the API key in Keychain (never stored in this file):
+       security add-generic-password -a $USER -s aw-sync-key -w "your-key-here"
 
-  2. Edit the two REPLACE_ME values below (python path + script path).
-
-  3. Copy to LaunchAgents and bootstrap:
+  2. Copy to LaunchAgents and load:
        cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
+
+  3. Verify it's running:
+       launchctl print gui/$(id -u)/dev.tylerkeller.aw-sync
+
+  RELOADING AFTER CHANGES (bootstrap fails if already registered — always bootout first)
+       cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
+       launchctl bootout gui/$(id -u)/dev.tylerkeller.aw-sync 2>/dev/null; true
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
 
   USEFUL COMMANDS
@@ -19,6 +24,7 @@
   Logs:     tail -f /tmp/aw-sync.log
   Stop:     launchctl bootout gui/$(id -u)/dev.tylerkeller.aw-sync
   Restart:  launchctl kickstart -k gui/$(id -u)/dev.tylerkeller.aw-sync
+  Update key: security add-generic-password -U -a $USER -s aw-sync-key -w "new-key"
 -->
 <plist version="1.0">
 <dict>
@@ -27,19 +33,10 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>REPLACE_ME_python3_path</string>
-        <string>REPLACE_ME_absolute_path_to_aw_sync.py</string>
+        <string>/Users/tylerkeller/.local/share/aw-sync/venv/bin/python</string>
+        <string>/Users/tylerkeller/Code/Personal/Apps/WebApps/tylerkeller-dev/api/scripts/aw_sync.py</string>
     </array>
 
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>AW_SYNC_KEY</key>
-        <string>REPLACE_WITH_YOUR_API_KEY</string>
-        <key>AW_SYNC_URL</key>
-        <string>https://api.tylerkeller.dev</string>
-        <key>AW_SYNC_MACHINE</key>
-        <string>personal-macbook</string>
-    </dict>
 
     <key>RunAtLoad</key>
     <true/>

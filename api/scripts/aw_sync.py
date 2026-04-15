@@ -25,15 +25,18 @@ USAGE
 ────────────────────────────────────────────────────────────────────────────
 STARTUP — macOS (launchd)
 
-  1. Copy the template plist from this directory:
+  1. Store your API key in the macOS Keychain (one-time, never touches a file):
+       security add-generic-password -a $USER -s aw-sync-key -w "your-key-here"
+  2. Copy and load:
        cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
-  2. Edit the two REPLACE_ME fields (python path + script path) and set AW_SYNC_KEY.
-  3. Bootstrap it (launchctl load is deprecated and broken on modern macOS):
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
-  4. Verify:
+  3. Verify:
        launchctl print gui/$(id -u)/dev.tylerkeller.aw-sync
-  5. To stop/remove:
-       launchctl bootout gui/$(id -u)/dev.tylerkeller.aw-sync
+
+  RELOADING AFTER CHANGES — bootstrap fails if already registered, always bootout first:
+       cp dev.tylerkeller.aw-sync.plist ~/Library/LaunchAgents/
+       launchctl bootout gui/$(id -u)/dev.tylerkeller.aw-sync 2>/dev/null; true
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.tylerkeller.aw-sync.plist
 
 ────────────────────────────────────────────────────────────────────────────
 STARTUP — Linux (systemd user service)
@@ -67,9 +70,9 @@ import os
 import sys
 import json
 import time
-import socket
 import argparse
 import logging
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -78,11 +81,24 @@ try:
 except ImportError:
     sys.exit("requests is required: pip install requests")
 
+
+def _keychain_get(service: str) -> str:
+    """Return the password for a macOS Keychain generic-password entry, or ''."""
+    try:
+        r = subprocess.run(
+            ["security", "find-generic-password", "-a", os.environ.get("USER", ""), "-s", service, "-w"],
+            capture_output=True, text=True,
+        )
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except FileNotFoundError:
+        return ""
+
+
 # ── config ───────────────────────────────────────────────────────────────────
 AW_URL         = os.getenv("AW_URL", "http://localhost:5600")
 SERVER_URL      = os.getenv("AW_SYNC_URL", "https://api.tylerkeller.dev")
-API_KEY         = os.getenv("AW_SYNC_KEY", "")
-MACHINE         = os.getenv("AW_SYNC_MACHINE", socket.gethostname())
+API_KEY         = os.getenv("AW_SYNC_KEY") or _keychain_get("aw-sync-key")
+MACHINE         = os.getenv("AW_SYNC_MACHINE", "personal-macbook")
 SYNC_INTERVAL   = int(os.getenv("AW_SYNC_INTERVAL", "300"))
 BATCH_SIZE      = 500
 CURSOR_FILE     = Path.home() / ".config" / "aw-sync" / "cursor.json"

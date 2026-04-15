@@ -2,22 +2,13 @@ let heatmapData = null;
 let heatmapYear = new Date().getFullYear();
 let heatmapControlsInit = false;
 
-const TRACKABLE_ITEMS = ['morning_routine', 'evening_routine'];
-const PHYSICAL_ITEMS = ['lift', 'muay_thai', 'run'];
-const ITEM_LABELS = {
-    morning_routine: 'morning',
-    evening_routine: 'evening',
-    lift: 'lift',
-    muay_thai: 'muay thai',
-    run: 'run'
-};
-const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const DAY_LABELS   = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const TOTAL_ITEMS = TRACKABLE_ITEMS.length + 1; // routines + 1 physical
+const MAX_BONUSES  = 6;
 
 async function loadHeatmap() {
     try {
-        const response = await fetch(`${API_URL}/data/sheet`, {
+        const response = await fetch(`${API_URL}/data/score`, {
             headers: { 'X-Key': apiKey }
         });
         if (!response.ok) return;
@@ -30,87 +21,49 @@ async function loadHeatmap() {
 }
 
 function setupHeatmapControls() {
-    const prevBtn = document.getElementById('heatmap-prev');
-    const nextBtn = document.getElementById('heatmap-next');
-
-    prevBtn.addEventListener('click', () => {
-        heatmapYear--;
-        renderHeatmap();
-    });
-
-    nextBtn.addEventListener('click', () => {
-        heatmapYear++;
-        renderHeatmap();
-    });
-
+    document.getElementById('heatmap-prev').addEventListener('click', () => { heatmapYear--; renderHeatmap(); });
+    document.getElementById('heatmap-next').addEventListener('click', () => { heatmapYear++; renderHeatmap(); });
     heatmapControlsInit = true;
 }
 
 function renderHeatmap() {
     const gridEl = document.getElementById('heatmap-grid');
     const yearEl = document.getElementById('heatmap-year');
-    const prevBtn = document.getElementById('heatmap-prev');
-    const nextBtn = document.getElementById('heatmap-next');
     const currentYear = new Date().getFullYear();
 
     yearEl.textContent = heatmapYear;
-    nextBtn.disabled = heatmapYear >= currentYear;
+    document.getElementById('heatmap-next').disabled = heatmapYear >= currentYear;
 
+    // Build lookup: date → score entry
     const dayData = {};
     if (heatmapData) {
-        heatmapData.forEach(day => {
-            const done = [];
-            const missed = [];
-            TRACKABLE_ITEMS.forEach(item => {
-                if (day[item]) {
-                    done.push(ITEM_LABELS[item]);
-                } else {
-                    missed.push(ITEM_LABELS[item]);
-                }
-            });
-
-            const physicalDone = PHYSICAL_ITEMS.filter(item => day[item]);
-            if (physicalDone.length > 0) {
-                done.push('physical (' + physicalDone.map(i => ITEM_LABELS[i]).join(', ') + ')');
-            } else {
-                missed.push('physical');
-            }
-
-            dayData[day.date] = {
-                score: done.length / TOTAL_ITEMS,
-                done,
-                missed
-            };
-        });
+        heatmapData.forEach(d => { dayData[d.date] = d; });
     }
 
-    const startDate = new Date(heatmapYear, 0, 1);
-    const startDay = startDate.getDay();
-    const isLeapYear = (heatmapYear % 4 === 0 && heatmapYear % 100 !== 0) || (heatmapYear % 400 === 0);
-    const daysInYear = isLeapYear ? 366 : 365;
+    const startDate  = new Date(heatmapYear, 0, 1);
+    const startDay   = startDate.getDay();
+    const isLeap     = (heatmapYear % 4 === 0 && heatmapYear % 100 !== 0) || heatmapYear % 400 === 0;
+    const daysInYear = isLeap ? 366 : 365;
 
-    const cellSize = 10;
-    const cellGap = 2;
+    const cellSize  = 10;
+    const cellGap   = 2;
     const cellTotal = cellSize + cellGap;
-
-    const leftPad = 28;
-    const topPad = 16;
-
-    const totalCells = startDay + daysInYear;
+    const leftPad   = 28;
+    const topPad    = 16;
+    const totalCells  = startDay + daysInYear;
     const weeksNeeded = Math.ceil(totalCells / 7);
-
-    const width = leftPad + weeksNeeded * cellTotal;
+    const width  = leftPad + weeksNeeded * cellTotal;
     const height = topPad + 7 * cellTotal;
 
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark     = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const emptyColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-    const labelColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+    const labelColor = isDark ? 'rgba(255,255,255,0.4)'  : 'rgba(0,0,0,0.4)';
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', width);
     svg.setAttribute('height', height);
 
-    // day labels on the left
+    // Day labels
     for (let d = 0; d < 7; d++) {
         if (d % 2 === 1) {
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -124,79 +77,77 @@ function renderHeatmap() {
         }
     }
 
-    // month labels above the grid
-    let lastMonthDrawn = -1;
-    let dateCounter = 0;
+    // Month labels (first pass)
+    let lastMonth = -1;
+    let dateIdx   = 0;
     for (let week = 0; week < weeksNeeded; week++) {
         for (let day = 0; day < 7; day++) {
-            const cellIndex = week * 7 + day;
-            if (cellIndex < startDay) continue;
-            if (dateCounter >= daysInYear) break;
-
-            const currentDate = new Date(heatmapYear, 0, 1 + dateCounter);
-            const month = currentDate.getMonth();
-            if (month !== lastMonthDrawn) {
+            if (week * 7 + day < startDay) continue;
+            if (dateIdx >= daysInYear) break;
+            const d = new Date(heatmapYear, 0, 1 + dateIdx);
+            if (d.getMonth() !== lastMonth) {
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', leftPad + week * cellTotal);
                 text.setAttribute('y', topPad - 4);
                 text.setAttribute('font-size', '9');
                 text.setAttribute('fill', labelColor);
                 text.setAttribute('font-family', 'monospace');
-                text.textContent = MONTH_LABELS[month];
+                text.textContent = MONTH_LABELS[d.getMonth()];
                 svg.appendChild(text);
-                lastMonthDrawn = month;
+                lastMonth = d.getMonth();
             }
             break;
         }
-        // advance dateCounter for this week
         for (let day = 0; day < 7; day++) {
-            const cellIndex = week * 7 + day;
-            if (cellIndex < startDay) continue;
-            if (dateCounter >= daysInYear) break;
-            dateCounter++;
+            if (week * 7 + day < startDay) continue;
+            if (dateIdx >= daysInYear) break;
+            dateIdx++;
         }
     }
 
-    // cells
-    dateCounter = 0;
+    // Cells
+    dateIdx = 0;
     for (let week = 0; week < weeksNeeded; week++) {
         for (let day = 0; day < 7; day++) {
-            const cellIndex = week * 7 + day;
-            if (cellIndex < startDay) continue;
-            if (dateCounter >= daysInYear) break;
+            if (week * 7 + day < startDay) continue;
+            if (dateIdx >= daysInYear) break;
 
-            const currentDate = new Date(heatmapYear, 0, 1 + dateCounter);
-            const dateStr = `${heatmapYear}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            const d       = new Date(heatmapYear, 0, 1 + dateIdx);
+            const dateStr = `${heatmapYear}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const info    = dayData[dateStr];
 
             const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', leftPad + week * cellTotal);
-            rect.setAttribute('y', topPad + day * cellTotal);
-            rect.setAttribute('width', cellSize);
+            rect.setAttribute('x',      leftPad + week * cellTotal);
+            rect.setAttribute('y',      topPad  + day  * cellTotal);
+            rect.setAttribute('width',  cellSize);
             rect.setAttribute('height', cellSize);
             rect.setAttribute('rx', 2);
             rect.setAttribute('data-date', dateStr);
 
-            const info = dayData[dateStr];
-            const score = info ? info.score : 0;
-            if (score > 0) {
-                rect.setAttribute('fill', `rgba(30, 255, 0, ${score})`);
+            if (info && info.hit) {
+                // green, brighter with each bonus
+                const opacity = 0.2 + (info.bonus_count / MAX_BONUSES) * 0.8;
+                rect.setAttribute('fill', `rgba(30,255,0,${opacity.toFixed(2)})`);
+            } else if (info && info.has_data) {
+                // known miss: faint red
+                rect.setAttribute('fill', 'rgba(255,107,107,0.25)');
             } else {
                 rect.setAttribute('fill', emptyColor);
             }
 
             svg.appendChild(rect);
-            dateCounter++;
+            dateIdx++;
         }
     }
 
     gridEl.innerHTML = '';
     gridEl.appendChild(svg);
 
-    // tooltip
+    // Tooltip
     let tooltip = document.getElementById('heatmap-tooltip');
     if (!tooltip) {
         tooltip = document.createElement('div');
-        tooltip.id = 'heatmap-tooltip';
+        tooltip.id        = 'heatmap-tooltip';
         tooltip.className = 'heatmap-tooltip';
         document.body.appendChild(tooltip);
     }
@@ -207,38 +158,66 @@ function renderHeatmap() {
             tooltip.style.display = 'none';
             return;
         }
+
         const dateStr = target.dataset.date;
-        const info = dayData[dateStr];
-        const [y, m, d] = dateStr.split('-');
-        const dateObj = new Date(+y, +m - 1, +d);
-        const prettyDate = dateObj.toLocaleDateString('en-US', {
-            weekday: 'short', month: 'short', day: 'numeric'
-        });
+        const info    = dayData[dateStr];
+        const [y, m, d2] = dateStr.split('-');
+        const prettyDate = new Date(+y, +m - 1, +d2)
+            .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
         let html = `<div class="heatmap-tooltip-date">${prettyDate}</div>`;
-        if (info && info.score > 0) {
-            html += `<div class="heatmap-tooltip-score">${info.done.length}/${TOTAL_ITEMS}</div>`;
-            html += info.done.map(i => `<div class="heatmap-tooltip-done">${i}</div>`).join('');
-            if (info.missed.length > 0) {
-                html += info.missed.map(i => `<div class="heatmap-tooltip-miss">${i}</div>`).join('');
+
+        if (info && info.has_data) {
+            const det = info.details;
+            const b   = info.bonuses;
+
+            // Routines
+            const mr = info.details.morning_routine;
+            const er = info.details.evening_routine;
+            html += `<div class="heatmap-tooltip-routines">` +
+                `<span class="${mr ? 'heatmap-tooltip-done' : 'heatmap-tooltip-miss'}">morning</span>` +
+                `<span class="${er ? 'heatmap-tooltip-done' : 'heatmap-tooltip-miss'}">evening</span>` +
+                `</div>`;
+
+            if (info.hit) {
+                html += `<div class="heatmap-tooltip-score">${info.bonus_count}/${MAX_BONUSES} bonuses</div>`;
+            }
+
+            const bonusRows = [
+                { key: 'produce',   label: `produce`,
+                  detail: det.produce_mins ? `${det.produce_mins}m vs ${det.youtube_mins}m yt` : null },
+                { key: 'no_yt',     label: 'no youtube',
+                  detail: `${det.youtube_mins}m` },
+                { key: 'cardio',    label: 'cardio',
+                  detail: det.cardio_type },
+                { key: 'lift_week', label: 'lift 3×/wk',
+                  detail: `${det.lifts_this_week} this week` },
+                { key: 'tir',       label: 'TIR ≥70%',
+                  detail: det.tir_pct != null ? `${det.tir_pct}%` : null },
+                { key: 'insulin',   label: 'insulin timing',
+                  detail: null },
+            ];
+
+            for (const row of bonusRows) {
+                const on = b[row.key];
+                const detail = row.detail ? ` <span style="opacity:0.55">(${row.detail})</span>` : '';
+                html += `<div class="${on ? 'heatmap-tooltip-done' : 'heatmap-tooltip-miss'}">` +
+                        `${on ? '✓' : '✗'} ${row.label}${detail}</div>`;
             }
         } else {
             html += `<div class="heatmap-tooltip-miss">no data</div>`;
         }
 
-        tooltip.innerHTML = html;
-        tooltip.style.display = 'block';
-
+        tooltip.innerHTML      = html;
+        tooltip.style.display  = 'block';
         const rect = tooltip.getBoundingClientRect();
         let left = e.pageX + 12;
-        let top = e.pageY - rect.height / 2;
+        let top  = e.pageY - rect.height / 2;
         if (left + rect.width > window.innerWidth) left = e.pageX - rect.width - 12;
         if (top < 0) top = 4;
         tooltip.style.left = left + 'px';
-        tooltip.style.top = top + 'px';
+        tooltip.style.top  = top  + 'px';
     });
 
-    svg.addEventListener('mouseleave', () => {
-        tooltip.style.display = 'none';
-    });
+    svg.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 }

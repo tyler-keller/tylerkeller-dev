@@ -39,3 +39,6 @@ benchmarking/compare/.results
 venv/
 __pycache__/
 data/
+
+CLAUDE.md
+AGENTS.md

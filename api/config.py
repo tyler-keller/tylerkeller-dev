@@ -38,6 +38,7 @@ AUDIO_DIR = os.path.join(MEDIA_DIR, "audio")
 
 LEGACY_DIR = os.path.join(PHOTOS_DIR, "legacy")
 PROGRESS_DIR = os.path.join(PHOTOS_DIR, "progress")
+MEALS_PHOTO_DIR = os.path.join(PHOTOS_DIR, "meals")
 JOURNAL_DIR = os.path.join(AUDIO_DIR, "journal")
 
 ALIGN_SCRIPT = os.path.join(BASE_DIR, "scripts", "align_photos.py")

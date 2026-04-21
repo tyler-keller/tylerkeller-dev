@@ -3,15 +3,19 @@ from fastapi.responses import FileResponse, RedirectResponse
 from datetime import datetime, timedelta
 from typing import Optional
 from config import (
-    PROGRESS_DIR, JOURNAL_DIR, FITBIT_STATE_FILE, FITBIT_CLIENT_ID, FITBIT_REDIRECT_URI,
+    PROGRESS_DIR, JOURNAL_DIR, MEALS_PHOTO_DIR, FITBIT_STATE_FILE, FITBIT_CLIENT_ID, FITBIT_REDIRECT_URI,
     SECRET_KEY, DENVER_TZ, UTC_TZ, PRODUCE_APPS, BROWSER_APPS, SYSTEM_NOISE
 )
 from auth import verify_key
-from db import get_db_connection, get_last_event, get_events_this_week, get_total_activity_minutes_today
+from db import (
+    get_db_connection, get_last_event, get_events_this_week, get_total_activity_minutes_today,
+    get_meal_presets, get_meals, get_daily_nutrition, insert_meal_preset
+)
 from utils import convert_to_denver, get_current_context, now_denver, now_utc
 from services.sheet import get_daily_sheet_data
 from services.score import get_score_data
 from services.fitbit import save_fitbit_tokens, _fitbit_basic_auth
+from models import MealPresetPayload
 import urllib.parse
 import requests
 import secrets
@@ -250,6 +254,77 @@ def get_weights(x_key: str = Header(None)):
         if date_only:
             weights.append({"date": date_only, "weight": float(weight)})
     return weights
+
+
+@router.get("/data/meals/presets")
+def get_presets(x_key: str = Header(None)):
+    verify_key(x_key)
+    return get_meal_presets()
+
+
+@router.post("/data/meals/presets")
+def create_preset(payload: MealPresetPayload, x_key: str = Header(None)):
+    verify_key(x_key)
+    preset_id = insert_meal_preset(
+        name=payload.name,
+        calories=payload.calories,
+        protein_g=payload.protein_g,
+        carbs_g=payload.carbs_g,
+        fat_g=payload.fat_g,
+        fiber_g=payload.fiber_g,
+    )
+    return {"id": preset_id, "name": payload.name, "calories": payload.calories,
+            "protein_g": payload.protein_g, "carbs_g": payload.carbs_g,
+            "fat_g": payload.fat_g, "fiber_g": payload.fiber_g}
+
+
+@router.get("/data/meals")
+def get_meals_list(days: int = 7, x_key: str = Header(None)):
+    verify_key(x_key)
+    cutoff = (now_utc() - timedelta(days=days)).isoformat()
+    meals = get_meals(cutoff)
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    result = []
+    for meal in meals:
+        m = dict(meal)
+        if m.get("metadata"):
+            try:
+                m["metadata"] = json.loads(m["metadata"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+        ts = m.get("timestamp", "")
+        window_start = (datetime.fromisoformat(ts) - timedelta(minutes=90)).isoformat() if ts else None
+        insulin_linked = False
+        if window_start:
+            c.execute(
+                "SELECT id FROM events WHERE event_name = 'insulin' AND start_time BETWEEN ? AND ? LIMIT 1",
+                (window_start, ts)
+            )
+            insulin_linked = c.fetchone() is not None
+        m["insulin_linked"] = insulin_linked
+        result.append(m)
+
+    conn.close()
+    return result
+
+
+@router.get("/data/nutrition")
+def get_nutrition(days: int = 30, x_key: str = Header(None)):
+    verify_key(x_key)
+    cutoff = (now_utc() - timedelta(days=days)).isoformat()
+    return get_daily_nutrition(cutoff)
+
+
+@router.get("/data/media/photos/meals/{filename}")
+def serve_meal_photo(filename: str, x_key: str = Header(None)):
+    verify_key(x_key)
+    file_path = os.path.join(MEALS_PHOTO_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return FileResponse(file_path)
 
 
 @router.get("/data/activity")

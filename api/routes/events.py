@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Header, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, Header, UploadFile, File, Form, BackgroundTasks, HTTPException
 from typing import Optional
-from config import PROGRESS_DIR, JOURNAL_DIR
+from config import PROGRESS_DIR, JOURNAL_DIR, MEALS_PHOTO_DIR
 from auth import verify_key
-from db import insert_event, update_event_end_time
+from db import insert_event, update_event_end_time, insert_meal, insert_meal_preset, get_meal_preset_by_id
 from utils import strip_suffix, load_state, save_state, now_utc, align_photo_inplace
-from models import DefaultShortcutPayload, ActivityPayload, AWBatchPayload
+from models import DefaultShortcutPayload, ActivityPayload, AWBatchPayload, MealLogPayload
 from services.journal import process_evening_routine
+from services.meal import estimate_macros_from_photo
+import os
 import shutil
 import uuid
 import json
@@ -94,6 +96,119 @@ async def handle_evening_routine(
     background_tasks.add_task(process_evening_routine, row_id, file_path)
 
     return {"status": "ok", "file_saved": db_media_path, "processing": "background"}
+
+
+@router.post("/event/meal/photo")
+async def handle_meal_photo(
+    photo: UploadFile = File(...),
+    name: Optional[str] = Form(None),
+    meal_type: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    save_as_preset: str = Form("true"),
+    x_key: str = Header(None)
+):
+    verify_key(x_key)
+
+    os.makedirs(MEALS_PHOTO_DIR, exist_ok=True)
+    file_extension = photo.filename.split('.')[-1] if '.' in photo.filename else 'jpg'
+    unique_filename = f"{now_utc().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.{file_extension}"
+    file_path = f"{MEALS_PHOTO_DIR}/{unique_filename}"
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(photo.file, buffer)
+
+    try:
+        macros = estimate_macros_from_photo(file_path, name)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Macro estimation failed: {e}")
+
+    db_photo_path = f"data/media/photos/meals/{unique_filename}"
+    now = now_utc()
+    metadata = json.dumps({"confidence": macros.get("confidence"), "llm_notes": macros.get("notes")})
+
+    meal_id = insert_meal(
+        timestamp=now.isoformat(),
+        meal_type=meal_type,
+        preset_id=None,
+        servings=1.0,
+        name=macros.get("name") or name,
+        calories=macros.get("calories"),
+        protein_g=macros.get("protein_g"),
+        carbs_g=macros.get("carbs_g"),
+        fat_g=macros.get("fat_g"),
+        fiber_g=macros.get("fiber_g"),
+        photo_path=db_photo_path,
+        notes=notes,
+        metadata=metadata,
+    )
+
+    preset_id = None
+    if save_as_preset.lower() in ("true", "1", "yes") and macros.get("name"):
+        preset_id = insert_meal_preset(
+            name=macros["name"],
+            calories=macros.get("calories"),
+            protein_g=macros.get("protein_g"),
+            carbs_g=macros.get("carbs_g"),
+            fat_g=macros.get("fat_g"),
+            fiber_g=macros.get("fiber_g"),
+            photo_path=db_photo_path,
+        )
+
+    return {"status": "ok", "meal_id": meal_id, "preset_id": preset_id, "macros": macros}
+
+
+@router.post("/event/meal")
+async def handle_meal(payload: MealLogPayload, x_key: str = Header(None)):
+    verify_key(x_key)
+
+    now = now_utc()
+
+    if payload.preset_id is not None:
+        preset = get_meal_preset_by_id(payload.preset_id)
+        if not preset:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        s = payload.servings
+        meal_id = insert_meal(
+            timestamp=now.isoformat(),
+            meal_type=payload.meal_type,
+            preset_id=payload.preset_id,
+            servings=s,
+            name=preset["name"],
+            calories=round(preset["calories"] * s) if preset["calories"] is not None else None,
+            protein_g=round(preset["protein_g"] * s, 1) if preset["protein_g"] is not None else None,
+            carbs_g=round(preset["carbs_g"] * s, 1) if preset["carbs_g"] is not None else None,
+            fat_g=round(preset["fat_g"] * s, 1) if preset["fat_g"] is not None else None,
+            fiber_g=round(preset["fiber_g"] * s, 1) if preset["fiber_g"] is not None else None,
+            notes=payload.notes,
+        )
+        return {"status": "ok", "meal_id": meal_id, "preset_id": payload.preset_id}
+
+    meal_id = insert_meal(
+        timestamp=now.isoformat(),
+        meal_type=payload.meal_type,
+        preset_id=None,
+        servings=payload.servings,
+        name=payload.name,
+        calories=payload.calories,
+        protein_g=payload.protein_g,
+        carbs_g=payload.carbs_g,
+        fat_g=payload.fat_g,
+        fiber_g=payload.fiber_g,
+        notes=payload.notes,
+    )
+
+    preset_id = None
+    if payload.save_as_preset and payload.name:
+        preset_id = insert_meal_preset(
+            name=payload.name,
+            calories=payload.calories,
+            protein_g=payload.protein_g,
+            carbs_g=payload.carbs_g,
+            fat_g=payload.fat_g,
+            fiber_g=payload.fiber_g,
+        )
+
+    return {"status": "ok", "meal_id": meal_id, "preset_id": preset_id}
 
 
 @router.post("/activity")

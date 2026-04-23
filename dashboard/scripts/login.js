@@ -44,6 +44,9 @@ async function verifyAndLoad(key) {
             loadGlucose();
             renderLife();
             loadCorrelation();
+            loadToday();
+            loadSleep();
+            loadNutrition();
         } else {
             input.value = '';
             input.placeholder = "whoops...";

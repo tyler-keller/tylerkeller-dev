@@ -1,4 +1,6 @@
 let radarSheetData = null;
+let radarScoreData = null;
+let radarSleepData = null;
 let radarMode = 'week';
 let radarSliderIndex = -1;
 let radarSortedDates = [];
@@ -14,11 +16,15 @@ const RADAR_LABELS = {
 
 async function loadRadar() {
     try {
-        const resp = await fetch(`${API_URL}/data/sheet`, {
-            headers: { 'X-Key': apiKey }
-        });
-        if (!resp.ok) return;
-        radarSheetData = await resp.json();
+        const [sheetResp, scoreResp, sleepResp] = await Promise.all([
+            fetch(`${API_URL}/data/sheet`,       { headers: { 'X-Key': apiKey } }),
+            fetch(`${API_URL}/data/score`,        { headers: { 'X-Key': apiKey } }),
+            fetch(`${API_URL}/data/sleep?days=365`, { headers: { 'X-Key': apiKey } }),
+        ]);
+        if (!sheetResp.ok) return;
+        radarSheetData = await sheetResp.json();
+        radarScoreData = scoreResp.ok ? await scoreResp.json() : [];
+        radarSleepData = sleepResp.ok ? await sleepResp.json() : [];
         radarSortedDates = radarSheetData.map(d => d.date).sort();
         setupRadarControls();
         renderRadar();
@@ -109,16 +115,38 @@ function computeRadarScores(range) {
     const avgProf = days.reduce((s, d) => s + (d.school_hours || 0) + (d.work_hours || 0), 0) / count;
     const professional = Math.min(100, Math.round((avgProf / 8) * 100));
 
-    // health: not wired up yet
-    const health = 0;
+    // health: average of TIR% (from score data) and sleep efficiency (from sleep data)
+    const healthValues = [];
+    if (radarScoreData) {
+        for (const d of radarScoreData) {
+            if (d.date >= range.start && d.date <= range.end && d.details.tir_pct != null) {
+                healthValues.push(d.details.tir_pct);
+            }
+        }
+    }
+    if (radarSleepData) {
+        for (const d of radarSleepData) {
+            if (d.date >= range.start && d.date <= range.end && d.efficiency != null) {
+                healthValues.push(d.efficiency);
+            }
+        }
+    }
+    const health = healthValues.length > 0
+        ? Math.min(100, Math.round(healthValues.reduce((a, b) => a + b, 0) / healthValues.length))
+        : 0;
 
     // discipline: routines done / possible routines * 100
     const morningCount = days.filter(d => d.morning_routine).length;
     const eveningCount = days.filter(d => d.evening_routine).length;
     const discipline = Math.min(100, Math.round(((morningCount + eveningCount) / (count * 2)) * 100));
 
-    // production: not wired up yet
-    const production = 0;
+    // production: produce_mins / (produce + youtube + browser) for days with AW data
+    const awDays = days.filter(d => d.has_aw_data);
+    const totalProduceMins = awDays.reduce((s, d) => s + (d.produce_mins || 0), 0);
+    const totalScreenMins  = awDays.reduce((s, d) => s + (d.produce_mins || 0) + (d.youtube_mins || 0) + (d.browser_mins || 0), 0);
+    const production = (totalScreenMins > 0 && awDays.length > 0)
+        ? Math.min(100, Math.round((totalProduceMins / totalScreenMins) * 100))
+        : 0;
 
     return { physical, professional, health, discipline, production };
 }

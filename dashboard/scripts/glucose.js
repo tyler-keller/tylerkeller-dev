@@ -24,26 +24,28 @@ async function loadGlucose() {
     if (!container) return;
 
     try {
-        const resp = await fetch(`${API_URL}/data/glucose`, {
-            headers: { 'X-Key': apiKey }
-        });
-        if (!resp.ok) {
+        const [glucoseResp, mealsResp] = await Promise.all([
+            fetch(`${API_URL}/data/glucose`,      { headers: { 'X-Key': apiKey } }),
+            fetch(`${API_URL}/data/meals?days=2`, { headers: { 'X-Key': apiKey } }),
+        ]);
+        if (!glucoseResp.ok) {
             container.innerHTML = '<span style="color:#666">failed to load</span>';
             return;
         }
-        const data = await resp.json();
+        const data  = await glucoseResp.json();
+        const meals = mealsResp.ok ? await mealsResp.json() : [];
         if (data.length === 0) {
             container.innerHTML = '<span style="color:#666">no readings yet</span>';
             return;
         }
-        renderGlucose(data);
+        renderGlucose(data, meals);
     } catch (e) {
         console.error("Glucose load error", e);
         container.innerHTML = '<span style="color:#666">error loading</span>';
     }
 }
 
-function renderGlucose(data) {
+function renderGlucose(data, meals = []) {
     const container = document.getElementById('glucose-container');
     container.innerHTML = '';
 
@@ -161,6 +163,28 @@ function renderGlucose(data) {
         line.setAttribute('stroke', segColor);
         line.setAttribute('stroke-width', '1.5');
         svg.appendChild(line);
+    }
+
+    // meal markers
+    const mealColors = { breakfast: '#ffd43b', lunch: '#69db7c', dinner: '#4a9eff', snack: '#b197fc', low_snack: '#ff6b6b' };
+    for (const meal of meals) {
+        const mx = xScale(meal.timestamp);
+        if (mx < padding.left || mx > padding.left + chartWidth) continue;
+        const mc = mealColors[meal.meal_type] || 'rgba(255,255,255,0.4)';
+
+        const mline = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        mline.setAttribute('x1', mx); mline.setAttribute('y1', padding.top);
+        mline.setAttribute('x2', mx); mline.setAttribute('y2', padding.top + chartHeight);
+        mline.setAttribute('stroke', mc); mline.setAttribute('stroke-width', '1');
+        mline.setAttribute('stroke-dasharray', '3,3'); mline.setAttribute('opacity', '0.65');
+        svg.appendChild(mline);
+
+        const mlabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        mlabel.setAttribute('x', mx + 2); mlabel.setAttribute('y', padding.top + 9);
+        mlabel.setAttribute('font-size', '7'); mlabel.setAttribute('fill', mc);
+        mlabel.setAttribute('font-family', 'monospace');
+        mlabel.textContent = meal.name ? meal.name.slice(0, 14) : (meal.meal_type || 'meal');
+        svg.appendChild(mlabel);
     }
 
     // latest dot

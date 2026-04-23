@@ -78,6 +78,93 @@ function computeStreaks() {
 function renderStock() {
     renderStockStats();
     renderStockChart();
+    renderBonusConsistency();
+}
+
+function renderBonusConsistency() {
+    const container = document.getElementById('bonus-consistency');
+    if (!container || !stockScoreData || stockScoreData.length === 0) return;
+
+    function render(days) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const cutoffStr = cutoff.toISOString().split('T')[0];
+        const subset = stockScoreData.filter(d => d.date >= cutoffStr && d.has_data);
+        if (subset.length === 0) { container.innerHTML = '<span style="color:#666">no data</span>'; return; }
+
+        const keys   = ['produce', 'no_yt', 'cardio', 'lift_week', 'tir', 'insulin'];
+        const labels = { produce: 'produce', no_yt: 'no youtube', cardio: 'cardio', lift_week: 'lift ≥3/wk', tir: 'TIR ≥70%', insulin: 'insulin' };
+
+        const rates = keys.map(k => ({
+            key: k,
+            label: labels[k],
+            rate: Math.round(subset.filter(d => d.bonuses[k]).length / subset.length * 100),
+            n: subset.length,
+        }));
+
+        const isDark     = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const textColor  = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+        const barBg      = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+
+        const barH   = 20;
+        const barGap = 7;
+        const labelW = 92;
+        const chartW = 300;
+        const pctW   = 38;
+        const svgW   = labelW + chartW + pctW + 8;
+        const svgH   = rates.length * (barH + barGap);
+
+        const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgEl.setAttribute('width', svgW);
+        svgEl.setAttribute('height', svgH);
+
+        rates.forEach((r, i) => {
+            const y      = i * (barH + barGap);
+            const barColor = r.rate >= 70 ? '#1eff00' : r.rate >= 40 ? '#ffd43b' : '#ff6b6b';
+
+            const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            lbl.setAttribute('x', labelW - 6); lbl.setAttribute('y', y + barH / 2 + 4);
+            lbl.setAttribute('text-anchor', 'end'); lbl.setAttribute('font-size', '10');
+            lbl.setAttribute('fill', textColor); lbl.setAttribute('font-family', 'monospace');
+            lbl.textContent = r.label;
+            svgEl.appendChild(lbl);
+
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('x', labelW); bg.setAttribute('y', y + 2);
+            bg.setAttribute('width', chartW); bg.setAttribute('height', barH - 4);
+            bg.setAttribute('fill', barBg);
+            svgEl.appendChild(bg);
+
+            const fillW = Math.max(2, (r.rate / 100) * chartW);
+            const fill  = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            fill.setAttribute('x', labelW); fill.setAttribute('y', y + 2);
+            fill.setAttribute('width', fillW); fill.setAttribute('height', barH - 4);
+            fill.setAttribute('fill', barColor); fill.setAttribute('opacity', '0.75');
+            svgEl.appendChild(fill);
+
+            const pctLbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            pctLbl.setAttribute('x', labelW + chartW + 6); pctLbl.setAttribute('y', y + barH / 2 + 4);
+            pctLbl.setAttribute('font-size', '10'); pctLbl.setAttribute('fill', barColor);
+            pctLbl.setAttribute('font-family', 'monospace');
+            pctLbl.textContent = `${r.rate}%`;
+            svgEl.appendChild(pctLbl);
+        });
+
+        const btnsHtml = [30, 60, 90].map(d =>
+            `<button class="consistency-btn${d === days ? ' active' : ''}" data-days="${d}">${d}d</button>`
+        ).join('');
+
+        container.innerHTML = `<div class="consistency-controls">${btnsHtml} <span class="consistency-n">(n=${rates[0].n})</span></div>`;
+        const chartDiv = document.createElement('div');
+        chartDiv.appendChild(svgEl);
+        container.appendChild(chartDiv);
+
+        container.querySelectorAll('.consistency-btn').forEach(btn => {
+            btn.addEventListener('click', () => render(parseInt(btn.dataset.days)));
+        });
+    }
+
+    render(30);
 }
 
 function renderStockStats() {

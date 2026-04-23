@@ -725,3 +725,260 @@ a, a:visited { color: var(--link-color) !important; }
     background: rgba(30, 255, 0, 0.15);
     color: #1eff00;
 }
+
+/* today panel */
+.today-top {
+    margin-bottom: 12px;
+}
+
+.today-date-line {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.today-date-str {
+    color: var(--link-color);
+}
+
+.today-hit-badge {
+    font-size: 0.85em;
+    padding: 1px 8px;
+    border-radius: 2px;
+}
+
+.today-hit-yes {
+    background: rgba(30, 255, 0, 0.15);
+    color: #1eff00;
+}
+
+.today-hit-no {
+    background: rgba(255, 107, 107, 0.12);
+    color: #ff6b6b;
+}
+
+.today-bonus-tally {
+    font-size: 0.8em;
+    opacity: 0.5;
+}
+
+.today-routines {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+}
+
+.routine-done { color: #1eff00; }
+.routine-open { opacity: 0.45; }
+
+.today-bonuses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px;
+}
+
+.today-bonus {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.today-bonus-icon {
+    font-size: 1em;
+    flex-shrink: 0;
+}
+
+.today-bonus-name {
+    flex-shrink: 0;
+}
+
+.today-bonus-detail {
+    opacity: 0.5;
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.today-bonus-earned {
+    background: rgba(30, 255, 0, 0.1);
+    color: #1eff00;
+}
+
+.today-bonus-failed {
+    background: rgba(255, 107, 107, 0.08);
+    color: #ff6b6b;
+}
+
+.today-bonus-open {
+    background: rgba(128, 128, 128, 0.07);
+    opacity: 0.75;
+}
+
+/* bonus consistency */
+.consistency-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.consistency-btn {
+    background: transparent;
+    border: 1px solid var(--text-color);
+    color: var(--text-color);
+    font-family: monospace;
+    font-size: 0.8em;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.consistency-btn:hover,
+.consistency-btn.active {
+    background: var(--text-color);
+    color: var(--bg-color);
+}
+
+.consistency-n {
+    font-size: 0.75em;
+    opacity: 0.4;
+}
+
+/* sleep */
+.sleep-summary {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    font-size: 0.85em;
+}
+
+.sleep-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sleep-stat-label {
+    color: #666;
+    font-size: 0.8em;
+}
+
+.sleep-stat-val {
+    color: #1eff00;
+}
+
+.sleep-legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 8px;
+    font-size: 0.75em;
+    opacity: 0.6;
+}
+
+.sleep-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sleep-legend-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+}
+
+.sleep-stages {
+    margin-top: 10px;
+    font-size: 0.8em;
+}
+
+.sleep-stages-label {
+    margin-bottom: 5px;
+    opacity: 0.6;
+}
+
+.sleep-stages-bar {
+    display: flex;
+    height: 10px;
+    width: 100%;
+    max-width: 400px;
+    overflow: hidden;
+    border-radius: 2px;
+    margin-bottom: 6px;
+}
+
+.sleep-stage-seg {
+    height: 100%;
+}
+
+.sleep-stages-legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    opacity: 0.6;
+}
+
+.sleep-stage-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 3px;
+}
+
+/* nutrition */
+.nutrition-summary {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    font-size: 0.85em;
+}
+
+.nutrition-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nutrition-stat-label {
+    color: #666;
+    font-size: 0.8em;
+}
+
+.nutrition-stat-val {
+    color: var(--text-color);
+}
+
+.nutrition-legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 0.75em;
+    opacity: 0.6;
+    align-items: center;
+}
+
+.nutrition-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.nutrition-legend-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+}
+
+.nutrition-legend-note {
+    font-size: 0.9em;
+    opacity: 0.7;
+}

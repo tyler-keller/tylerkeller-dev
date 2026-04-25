@@ -16,6 +16,8 @@ DEXCOM_PASSWORD = os.environ.get("DEXCOM_PASSWORD")
 FITBIT_CLIENT_ID = os.environ.get("FITBIT_CLIENT_ID")
 FITBIT_CLIENT_SECRET = os.environ.get("FITBIT_CLIENT_SECRET")
 FITBIT_REDIRECT_URI = os.environ.get("FITBIT_REDIRECT_URI", "https://api.tylerkeller.dev/fitbit/callback")
+FATSECRET_CLIENT_ID = os.environ.get("FATSECRET_CLIENT_ID")
+FATSECRET_CLIENT_SECRET = os.environ.get("FATSECRET_CLIENT_SECRET")
 
 DENVER_TZ = ZoneInfo("America/Denver")
 UTC_TZ = ZoneInfo("UTC")

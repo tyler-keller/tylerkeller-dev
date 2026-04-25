@@ -11,6 +11,7 @@ from db import (
     get_db_connection, get_last_event, get_events_this_week, get_total_activity_minutes_today,
     get_meal_presets, get_meals, get_daily_nutrition, insert_meal_preset
 )
+from services.fatsecret import search_foods, get_food_macros
 from utils import convert_to_denver, get_current_context, now_denver, now_utc
 from services.sheet import get_daily_sheet_data
 from services.score import get_score_data
@@ -254,6 +255,28 @@ def get_weights(x_key: str = Header(None)):
         if date_only:
             weights.append({"date": date_only, "weight": float(weight)})
     return weights
+
+
+@router.get("/data/meals/foods/search")
+def search_meal_foods(q: str, max_results: int = 10, x_key: str = Header(None)):
+    """Search FatSecret for foods matching a text query."""
+    verify_key(x_key)
+    if not q:
+        raise HTTPException(status_code=400, detail="Query parameter 'q' is required")
+    try:
+        return search_foods(q, max_results=max_results)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"FatSecret search failed: {e}")
+
+
+@router.get("/data/meals/foods/{food_id}")
+def get_meal_food(food_id: str, x_key: str = Header(None)):
+    """Return macros for a specific FatSecret food_id."""
+    verify_key(x_key)
+    try:
+        return get_food_macros(food_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"FatSecret lookup failed: {e}")
 
 
 @router.get("/data/meals/presets")

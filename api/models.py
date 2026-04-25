@@ -65,6 +65,21 @@ class MealPresetPayload(BaseModel):
     fiber_g: Optional[float] = None
 
 
+class MealFoodLogPayload(BaseModel):
+    food_id: str
+    servings: float = 1.0
+    meal_type: Optional[str] = None
+    notes: Optional[str] = None
+    save_as_preset: Union[bool, str] = False
+
+    @field_validator("save_as_preset", mode="before")
+    @classmethod
+    def coerce_bool(cls, v):
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes")
+        return v
+
+
 class MealLogPayload(BaseModel):
     meal_type: Optional[str] = None
     preset_id: Optional[int] = None

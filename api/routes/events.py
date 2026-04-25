@@ -4,9 +4,10 @@ from config import PROGRESS_DIR, JOURNAL_DIR, MEALS_PHOTO_DIR
 from auth import verify_key
 from db import insert_event, update_event_end_time, insert_meal, insert_meal_preset, get_meal_preset_by_id
 from utils import strip_suffix, load_state, save_state, now_utc, align_photo_inplace
-from models import DefaultShortcutPayload, ActivityPayload, AWBatchPayload, MealLogPayload
+from models import DefaultShortcutPayload, ActivityPayload, AWBatchPayload, MealLogPayload, MealFoodLogPayload
 from services.journal import process_evening_routine
-from services.meal import estimate_macros_from_photo
+from services.meal import identify_food_from_photo
+from services.fatsecret import search_foods, get_food_macros
 import os
 import shutil
 import uuid
@@ -118,13 +119,22 @@ async def handle_meal_photo(
         shutil.copyfileobj(photo.file, buffer)
 
     try:
-        macros = estimate_macros_from_photo(file_path, name)
+        food_name = identify_food_from_photo(file_path, name)
+        results = search_foods(food_name, max_results=1)
+        if not results:
+            raise ValueError(f"No FatSecret results for '{food_name}'")
+        macros = get_food_macros(results[0]["food_id"])
+        macros["notes"] = f"Serving: {macros.pop('serving_description', '')}. Food identified via photo."
+        macros["confidence"] = 1.0
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Macro estimation failed: {e}")
+        raise HTTPException(status_code=503, detail=f"Macro lookup failed: {e}")
 
     db_photo_path = f"data/media/photos/meals/{unique_filename}"
     now = now_utc()
-    metadata = json.dumps({"confidence": macros.get("confidence"), "llm_notes": macros.get("notes")})
+    metadata = json.dumps({
+        "fatsecret_food_id": macros.get("food_id"),
+        "serving_notes": macros.get("notes"),
+    })
 
     meal_id = insert_meal(
         timestamp=now.isoformat(),
@@ -206,6 +216,51 @@ async def handle_meal(payload: MealLogPayload, x_key: str = Header(None)):
             carbs_g=payload.carbs_g,
             fat_g=payload.fat_g,
             fiber_g=payload.fiber_g,
+        )
+
+    return {"status": "ok", "meal_id": meal_id, "preset_id": preset_id}
+
+
+@router.post("/event/meal/food")
+async def handle_meal_food(payload: MealFoodLogPayload, x_key: str = Header(None)):
+    """Log a meal by FatSecret food_id. Macros are fetched from the FatSecret database."""
+    verify_key(x_key)
+
+    try:
+        base = get_food_macros(payload.food_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"FatSecret lookup failed: {e}")
+
+    s = payload.servings
+    now = now_utc()
+    serving_desc = base.pop("serving_description", "")
+    food_id = base.pop("food_id", payload.food_id)
+    metadata = json.dumps({"fatsecret_food_id": food_id, "serving_notes": f"Serving: {serving_desc}"})
+
+    meal_id = insert_meal(
+        timestamp=now.isoformat(),
+        meal_type=payload.meal_type,
+        preset_id=None,
+        servings=s,
+        name=base["name"],
+        calories=round(base["calories"] * s),
+        protein_g=round(base["protein_g"] * s, 1),
+        carbs_g=round(base["carbs_g"] * s, 1),
+        fat_g=round(base["fat_g"] * s, 1),
+        fiber_g=round(base["fiber_g"] * s, 1),
+        notes=payload.notes,
+        metadata=metadata,
+    )
+
+    preset_id = None
+    if payload.save_as_preset:
+        preset_id = insert_meal_preset(
+            name=base["name"],
+            calories=base["calories"],
+            protein_g=base["protein_g"],
+            carbs_g=base["carbs_g"],
+            fat_g=base["fat_g"],
+            fiber_g=base["fiber_g"],
         )
 
     return {"status": "ok", "meal_id": meal_id, "preset_id": preset_id}

@@ -9,6 +9,8 @@ import time
 _RETRY_DELAYS = [2, 4, 8, 16]  # seconds between attempts; 4 tries total
 
 
+# DEPRECATED: macro estimation via Gemini has been replaced by FatSecret database lookups
+# (see services/fatsecret.py). Kept for reference; remove once callers are fully migrated.
 def estimate_macros_from_photo(file_path: str, name: Optional[str] = None) -> dict:
     with open(file_path, "rb") as f:
         image_bytes = f.read()
@@ -40,6 +42,44 @@ def estimate_macros_from_photo(file_path: str, name: Optional[str] = None) -> di
         try:
             resp = gemini.models.generate_content(model=LLM_MODEL, contents=contents, config=config)
             return json.loads(resp.text or "{}")
+        except ServerError as e:
+            if e.status_code != 503:
+                raise
+            last_exc = e
+            print(f"Gemini 503 on attempt {attempt + 1}, retrying in {_RETRY_DELAYS[attempt] if attempt < len(_RETRY_DELAYS) else 0}s")
+
+    raise last_exc
+
+
+def identify_food_from_photo(file_path: str, name: Optional[str] = None) -> str:
+    """Uses Gemini vision to identify the food name from a photo.
+
+    If a name hint is already provided it is returned directly, skipping the
+    Gemini call entirely.
+    """
+    if name:
+        return name
+
+    with open(file_path, "rb") as f:
+        image_bytes = f.read()
+    ext = file_path.rsplit('.', 1)[-1].lower()
+    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+    contents = [
+        genai_types.Part.from_bytes(data=image_bytes, mime_type=mime),
+        (
+            "What food or meal is shown in this image? "
+            "Reply with only a short food name suitable for a nutrition database search "
+            "(e.g. 'grilled chicken breast', 'caesar salad', 'banana'). No extra text."
+        ),
+    ]
+
+    last_exc: Exception = RuntimeError("no attempts made")
+    for attempt, delay in enumerate([0] + _RETRY_DELAYS):
+        if delay:
+            time.sleep(delay)
+        try:
+            resp = gemini.models.generate_content(model=LLM_MODEL, contents=contents)
+            return (resp.text or "").strip()
         except ServerError as e:
             if e.status_code != 503:
                 raise
